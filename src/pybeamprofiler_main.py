@@ -20,20 +20,20 @@ import pyqtgraph as pg
 
 # A thread for the camera. It emits frames and the number of the current frame
 class Thread(QtCore.QThread):
-    changePixmap = QtCore.pyqtSignal(np.ndarray, int)
-    NUM_IMG = 100000
-    serial = '20270803'  # serisl of the flir cam
-    ppmm = 0.0069  # pixels per mm to convert position to mm
-    ppmm = 1 / ppmm
-    system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
-    version = system.GetLibraryVersion()  # Get current library version
-    ExpTime_us = 8000
-    cam_list = system.GetCameras()  # Retrieve list of cameras from the system
-
-    cam = cam_list.GetBySerial(serial)
-    cam.Init()
-    processor = PySpin.ImageProcessor()
-    cam.BeginAcquisition()
+    def __init__(self):
+        self.changePixmap = QtCore.pyqtSignal(np.ndarray, int)
+        self.NUM_IMG = 100000
+        self.ppmm = 0.0069  # pixels per mm to convert position to mm
+        self.ppmm = 1 / self.ppmm
+        self.ExpTime_us = 8000
+        self.serial = '20270803'  # serisl of the flir cam
+        self.system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
+        self.version = self.system.GetLibraryVersion()  # Get current library version
+        self.cam_list = self.system.GetCameras()  # Retrieve list of cameras from the system
+        self.cam = self.cam_list.GetBySerial(self.serial)
+        self.cam.Init()
+        self.processor = PySpin.ImageProcessor()
+        self.cam.BeginAcquisition()
 
     def run(self):
         self.cam.ExposureTime.SetValue(self.ExpTime_us)
@@ -64,6 +64,8 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ExpTime_text.setText('7000')
 
         self.ui = Ui_MainWindow()
+        self.window1 = QMainWindow()
+        self.ui.setupUi(self.window1)
         self.ui.X_Pos_Plot.clicked.connect(self.PlotXchange)
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
 
@@ -94,8 +96,6 @@ class PyBeamProfilerGUI(QMainWindow):
         self.printed_info.setText('     Please enter the pixel size of the camera you are using.')
 
     def OpenViewer(self):
-        self.window1 = QMainWindow()
-        self.ui.setupUi(self.window1)
 
         self.window1.show()
 
@@ -146,7 +146,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pos2 = np.zeros(int(self.nr_of_frames.text()))
         self.std2 = np.zeros(int(self.nr_of_frames.text()))
         self.FWHM = np.zeros(int(self.nr_of_frames.text()))
-        th = Thread(self)
+        th = Thread()
         th.changePixmap.connect(self.ShowFrame)
         th.NUM_IMG = int(self.nr_of_frames.text())
         th.serial = (self.cam_serial.text())
