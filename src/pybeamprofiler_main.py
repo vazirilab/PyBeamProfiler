@@ -100,7 +100,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def PlotYchange_offline(self):
         self.Y_Plot_offline = pg.PlotWidget()
-        self.Y_Plot_offline.setTitle("X Position")
+        self.Y_Plot_offline.setTitle("Y Position")
         self.Y_Plot_offline.plot(self.Y_Max_Pos_offline)
         self.window_plot_y_offline = QMainWindow()
         self.window_plot_y_offline.setCentralWidget(self.Y_Plot_offline)
