@@ -12,7 +12,6 @@ import PIL
 import math
 import time
 import scipy as sp
-# from scipy.optimize import curve_fit
 import PySpin
 import cv2
 from View_page import Ui_MainWindow
