@@ -108,7 +108,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
 
     def OpenFile(self):
-        self.allfiles = QFileDialog.getOpenFileNames(self, 'Open file', 'D:\STUDY\Thesis & Internship\pybeamprofiler\data')
+        self.allfiles = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
         self.allfiles = self.allfiles[0]
         self.Nr_allfiles = len(self.allfiles)
         self.ui_offline.FrameSlider.setMaximum(self.Nr_allfiles-1)
@@ -118,8 +118,28 @@ class PyBeamProfilerGUI(QMainWindow):
         for i in range (self.Nr_allfiles):
 
             im = skimage.io.imread(self.allfiles[i])
-            im = im / (np.max(im))  # normalize the matrix
-            yx_coords = np.column_stack(np.where((im >= 0.895) & (im <= 0.905)))
+            im = (im - np.min(im)) / (np.max(im) - np.min(im))  # normalize the matrix
+            upper_limit = 0.905
+            lower_limit = 0.895
+            cond = True  # makes sure the elipse is detected
+            while cond:
+                yx_coords = np.column_stack(np.where((im >= lower_limit) & (im <= upper_limit)))
+                if np.max(np.shape(yx_coords)) > 2:
+                    upper_limit = 0.905
+                    lower_limit = 0.895
+                    cond = False
+                else:
+                    upper_limit = upper_limit + 0.01
+                    lower_limit = lower_limit - 0.01
+                if (upper_limit > 1) or (lower_limit < 0):
+                    print(f'Frame number {i} was skipped')
+                    i = i+1
+                    im = skimage.io.imread(self.allfiles[i])
+                    upper_limit = 0.905
+                    lower_limit = 0.895
+                if i >= self.Nr_allfiles - 1:
+                    break
+
             Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
             X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
             self.X_Max_Pos_offline[i] = X_Center * float(self.pixel_size.text())
@@ -128,6 +148,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_offline.X_Pos_Plot_offline.clicked.connect(self.PlotXchange_offline)
         self.ui_offline.Y_Pos_Plot_offline.clicked.connect(self.PlotYchange_offline)
         self.window2.show()
+
     def ChangViewedFrame(self, value):
 
         im = self.gray2qimage(skimage.io.imread(self.allfiles[value]))
@@ -160,9 +181,24 @@ class PyBeamProfilerGUI(QMainWindow):
 
         self.ui.std_LA_text.setText(str(np.max(FrameNP)))
         self.ui.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
-        FrameNP = (FrameNP) / (np.max(FrameNP))  # normalize the matrix
+        FrameNP = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
         # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
-        yx_coords = np.column_stack(np.where((FrameNP >= 0.895) & (FrameNP <= 0.905)))
+        upper_limit = 0.905
+        lower_limit = 0.895
+        cond = True # makes sure the elipse is detected
+        while cond:
+            yx_coords = np.column_stack(np.where((FrameNP >= lower_limit) & (FrameNP <= upper_limit)))
+            if np.max(np.shape(yx_coords)) > 2:
+                upper_limit = 0.905
+                lower_limit = 0.895
+                cond = False
+            else:
+                upper_limit = upper_limit + 0.01
+                lower_limit = lower_limit - 0.01
+            if (upper_limit > 1) or (lower_limit < 0):
+                print('Make sure camera is open')
+                cond = False
+
         Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
         X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
         # the axis is set at the furthest point from the center
