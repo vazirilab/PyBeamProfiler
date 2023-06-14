@@ -15,6 +15,7 @@ import scipy as sp
 import PySpin
 import cv2
 from View_page import Ui_MainWindow
+from Offline_viewer import Ui_Ofline_Viewer
 import pyqtgraph as pg
 
 
@@ -69,20 +70,74 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.X_Pos_Plot.clicked.connect(self.PlotXchange)
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
 
+        self.ui_offline = Ui_Ofline_Viewer()
+        self.window2 = QMainWindow()
+        self.ui_offline.setupUi(self.window2)
+
     def PlotYchange(self):
         self.Y_Plot = pg.PlotWidget()
         self.X_Plot.setTitle("Y Position")
         self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame])
-        self.setCentralWidget(self.Y_Plot)
+        self.window_plot_y = QMainWindow()
+        self.window_plot_y.setCentralWidget(self.Y_Plot)
+        self.window_plot_y.show()
 
     def PlotXchange(self):
         self.X_Plot = pg.PlotWidget()
         self.X_Plot.setTitle("X Position")
         self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame])
-        self.setCentralWidget(self.X_Plot)
+        self.window_plot_x= QMainWindow()
+        self.window_plot_x.setCentralWidget(self.X_Plot)
+        self.window_plot_x.show()
+
+    def PlotXchange_offline(self):
+        self.X_Plot_offline = pg.PlotWidget()
+        self.X_Plot_offline.setTitle("X Position")
+        self.X_Plot_offline.plot(self.X_Max_Pos_offline)
+        self.window_plot_x_offline = QMainWindow()
+        self.window_plot_x_offline.setCentralWidget(self.X_Plot_offline)
+        self.window_plot_x_offline.show()
+
+    def PlotYchange_offline(self):
+        self.Y_Plot_offline = pg.PlotWidget()
+        self.Y_Plot_offline.setTitle("X Position")
+        self.Y_Plot_offline.plot(self.Y_Max_Pos_offline)
+        self.window_plot_y_offline = QMainWindow()
+        self.window_plot_y_offline.setCentralWidget(self.Y_Plot_offline)
+        self.window_plot_y_offline.show()
+
 
     def OpenFile(self):
-        print(1)
+        self.allfiles = QFileDialog.getOpenFileNames(self, 'Open file', 'D:\STUDY\Thesis & Internship\pybeamprofiler\data')
+        self.allfiles = self.allfiles[0]
+        self.Nr_allfiles = len(self.allfiles)
+        self.ui_offline.FrameSlider.setMaximum(self.Nr_allfiles-1)
+        self.X_Max_Pos_offline = np.zeros(self.Nr_allfiles)  # array to follow the X-position of the beam center
+        self.Y_Max_Pos_offline = np.zeros(self.Nr_allfiles)  # array to follow the Y-position of the beam center
+
+        for i in range (self.Nr_allfiles):
+
+            im = skimage.io.imread(self.allfiles[i])
+            im = im / (np.max(im))  # normalize the matrix
+            yx_coords = np.column_stack(np.where((im >= 0.895) & (im <= 0.905)))
+            Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
+            X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
+            self.X_Max_Pos_offline[i] = X_Center * float(self.pixel_size.text())
+            self.Y_Max_Pos_offline[i] = Y_Center * float(self.pixel_size.text())
+        self.ui_offline.FrameSlider.valueChanged.connect(self.ChangViewedFrame)
+        self.ui_offline.X_Pos_Plot_offline.clicked.connect(self.PlotXchange_offline)
+        self.ui_offline.Y_Pos_Plot_offline.clicked.connect(self.PlotYchange_offline)
+        self.window2.show()
+    def ChangViewedFrame(self, value):
+
+        im = self.gray2qimage(skimage.io.imread(self.allfiles[value]))
+        self.ui_offline.Frame_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(im)))
+        self.ui_offline.FrameNr.setText(str(value))
+        self.ui_offline.x_position_text_offline.setText(str(self.X_Max_Pos_offline[value]))
+        self.ui_offline.y_position_text_offline.setText(str(self.Y_Max_Pos_offline[value]))
+
+
+
 
     def cam_serial_info(self):
         self.printed_info.setText('     Please enter the serial of the FLIR camera you are using. In case you do not '
