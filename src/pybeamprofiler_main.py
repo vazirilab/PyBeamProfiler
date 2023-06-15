@@ -256,6 +256,8 @@ class PyBeamProfilerGUI(QMainWindow):
         self.std2[i] = abs(popt2[2])
         self.ui.x_position_text.setText(str(X_Center))
         self.ui.y_position_text.setText(str(Y_Center))
+        self.Plot_Gauss.plot(x_col, sum_col, clear=True)
+
 
     def StartAcquisition(self):
         self.X_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
@@ -263,6 +265,12 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pos2 = np.zeros(int(self.nr_of_frames.text()))
         self.std2 = np.zeros(int(self.nr_of_frames.text()))
         self.FWHM = np.zeros(int(self.nr_of_frames.text()))
+        self.Plot_Gauss = pg.PlotWidget()
+        self.Plot_Gauss.setTitle("Gaussian Dist.")
+        self.window_Plot_Gauss = QMainWindow()
+        self.window_Plot_Gauss.setCentralWidget(self.Plot_Gauss)
+        self.window_Plot_Gauss.show()
+
         th = Thread(self)
         th.changePixmap.connect(self.ShowFrame)
         th.NUM_IMG = int(self.nr_of_frames.text())
