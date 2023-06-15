@@ -79,7 +79,7 @@ class PyBeamProfilerGUI(QMainWindow):
         
     def PlotStdchange(self):
         self.StdPlot = pg.PlotWidget()
-        self.StdPlot.setTitle("FWHM Position")
+        self.StdPlot.setTitle("Std Position")
         self.StdPlot.plot(self.std2[0:self.CurrentFrame])
         self.window_plot_Std = QMainWindow()
         self.window_plot_Std.setCentralWidget(self.StdPlot)
@@ -250,7 +250,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.circularity_text.setText(str( math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))))
         self.ui.std_LA_text.setText(str(abs(popt2[2])))
         self.ui.std_SA_text.setText(str(abs(popt1[2])))
-        self.FWHM[i] = 2 * math.sqrt(np.max(d_from_center))
+        self.FWHM[i] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
         self.X_Max_Pos[i] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[i] = Y_Center * float(self.pixel_size.text())
         self.std2[i] = abs(popt2[2])
