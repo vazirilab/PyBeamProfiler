@@ -98,6 +98,12 @@ class Ui_MainWindow(object):
         self.Y_Pos_Plot = QtWidgets.QPushButton(self.centralwidget)
         self.Y_Pos_Plot.setGeometry(QtCore.QRect(10, 250, 241, 41))
         self.Y_Pos_Plot.setObjectName("Y_Pos_Plot")
+        self.FWHM_Plot = QtWidgets.QPushButton(self.centralwidget)
+        self.FWHM_Plot.setGeometry(QtCore.QRect(10, 300, 241, 41))
+        self.FWHM_Plot.setObjectName("FWHM_Plot")
+        self.Std_LA_Plot = QtWidgets.QPushButton(self.centralwidget)
+        self.Std_LA_Plot.setGeometry(QtCore.QRect(10, 350, 241, 41))
+        self.Std_LA_Plot.setObjectName("Std_LA_Plot")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -120,6 +126,8 @@ class Ui_MainWindow(object):
         self.Circularity.setText(_translate("MainWindow", "Circularity"))
         self.X_Pos_Plot.setText(_translate("MainWindow", "Plot X-Position along time"))
         self.Y_Pos_Plot.setText(_translate("MainWindow", "Plot Y-Position along time"))
+        self.FWHM_Plot.setText(_translate("MainWindow", "Plot FWHM"))
+        self.Std_LA_Plot.setText(_translate("MainWindow", "Plot Std for Long Axis"))
 
 
 if __name__ == "__main__":

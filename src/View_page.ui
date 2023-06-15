@@ -293,6 +293,32 @@
      <string>Plot Y-Position along time</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="FWHM_Plot">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>300</y>
+      <width>241</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Plot FWHM</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Std_LA_Plot">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>350</y>
+      <width>241</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Plot Std for Long Axis</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
