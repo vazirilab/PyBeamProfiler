@@ -21,22 +21,21 @@ import pyqtgraph as pg
 
 # A thread for the camera. It emits frames and the number of the current frame
 class Thread(QtCore.QThread):
-    def __init__(self):
-        self.changePixmap = QtCore.pyqtSignal(np.ndarray, int)
-        self.NUM_IMG = 100000
-        self.ppmm = 0.0069  # pixels per mm to convert position to mm
-        self.ppmm = 1 / self.ppmm
-        self.ExpTime_us = 8000
-        self.serial = '20270803'  # serisl of the flir cam
-        self.system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
-        self.version = self.system.GetLibraryVersion()  # Get current library version
-        self.cam_list = self.system.GetCameras()  # Retrieve list of cameras from the system
+    changePixmap = QtCore.pyqtSignal(np.ndarray, int)
+    NUM_IMG = 100000
+    serial = '20270803'  # serisl of the flir cam
+    ppmm = 0.0069  # pixels per mm to convert position to mm
+    ppmm = 1 / ppmm
+    system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
+    version = system.GetLibraryVersion()  # Get current library version
+    ExpTime_us = 8000
+    cam_list = system.GetCameras()  # Retrieve list of cameras from the system
+
+    def run(self):
         self.cam = self.cam_list.GetBySerial(self.serial)
         self.cam.Init()
         self.processor = PySpin.ImageProcessor()
         self.cam.BeginAcquisition()
-
-    def run(self):
         self.cam.ExposureTime.SetValue(self.ExpTime_us)
         for i in range(self.NUM_IMG):
             # gg = np.random.rand(200, 200) * 1155
@@ -46,6 +45,8 @@ class Thread(QtCore.QThread):
 
             time.sleep(0.01)
             self.changePixmap.emit(FrameNP, i)
+        self.cam.EndAcquisition()
+        self.cam.DeInit()
 
 
 class PyBeamProfilerGUI(QMainWindow):
@@ -114,6 +115,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_offline.FrameSlider.setMaximum(self.Nr_allfiles-1)
         self.X_Max_Pos_offline = np.zeros(self.Nr_allfiles)  # array to follow the X-position of the beam center
         self.Y_Max_Pos_offline = np.zeros(self.Nr_allfiles)  # array to follow the Y-position of the beam center
+        self.Circ_offline = np.zeros(self.Nr_allfiles)
 
         for i in range (self.Nr_allfiles):
 
@@ -142,11 +144,14 @@ class PyBeamProfilerGUI(QMainWindow):
 
             Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
             X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
+            d_from_center = (yx_coords[:, 1] - X_Center) ** 2 + (yx_coords[:, 0] - Y_Center) ** 2
             self.X_Max_Pos_offline[i] = X_Center * float(self.pixel_size.text())
             self.Y_Max_Pos_offline[i] = Y_Center * float(self.pixel_size.text())
+            self.Circ_offline[i] = math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))
         self.ui_offline.FrameSlider.valueChanged.connect(self.ChangViewedFrame)
         self.ui_offline.X_Pos_Plot_offline.clicked.connect(self.PlotXchange_offline)
         self.ui_offline.Y_Pos_Plot_offline.clicked.connect(self.PlotYchange_offline)
+
         self.window2.show()
 
     def ChangViewedFrame(self, value):
@@ -154,6 +159,7 @@ class PyBeamProfilerGUI(QMainWindow):
         im = self.gray2qimage(skimage.io.imread(self.allfiles[value]))
         self.ui_offline.Frame_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(im)))
         self.ui_offline.FrameNr.setText(str(value))
+        self.ui_offline.circularity_text_offline.setText(str(self.Circ_offline[value]))
         self.ui_offline.x_position_text_offline.setText(str(self.X_Max_Pos_offline[value]))
         self.ui_offline.y_position_text_offline.setText(str(self.Y_Max_Pos_offline[value]))
 
@@ -223,7 +229,7 @@ class PyBeamProfilerGUI(QMainWindow):
         popt2, pcov2 = sp.optimize.curve_fit(self.gauss, x_col, sum_col)
 
         self.CurrentFrame = i
-        self.ui.circularity_text.setText(str(np.min(d_from_center) / np.max(d_from_center)))
+        self.ui.circularity_text.setText(str(2 * math.sqrt(np.min(d_from_center)) / 2 * math.sqrt(np.max(d_from_center))))
         self.ui.std_LA_text.setText(str(abs(popt2[2])))
         self.ui.std_SA_text.setText(str(abs(popt1[2])))
         self.X_Max_Pos[i] = X_Center * float(self.pixel_size.text())
@@ -237,7 +243,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pos2 = np.zeros(int(self.nr_of_frames.text()))
         self.std2 = np.zeros(int(self.nr_of_frames.text()))
         self.FWHM = np.zeros(int(self.nr_of_frames.text()))
-        th = Thread()
+        th = Thread(self)
         th.changePixmap.connect(self.ShowFrame)
         th.NUM_IMG = int(self.nr_of_frames.text())
         th.serial = (self.cam_serial.text())
