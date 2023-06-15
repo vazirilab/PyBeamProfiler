@@ -70,14 +70,32 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.setupUi(self.window1)
         self.ui.X_Pos_Plot.clicked.connect(self.PlotXchange)
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
-
+        self.ui.FWHM_Plot.clicked.connect(self.PlotFWHMchange)
+        self.ui.Std_LA_Plot.clicked.connect(self.PlotStdchange)
+        
         self.ui_offline = Ui_Ofline_Viewer()
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
+        
+    def PlotStdchange(self):
+        self.StdPlot = pg.PlotWidget()
+        self.StdPlot.setTitle("FWHM Position")
+        self.StdPlot.plot(self.std2[0:self.CurrentFrame])
+        self.window_plot_Std = QMainWindow()
+        self.window_plot_Std.setCentralWidget(self.StdPlot)
+        self.window_plot_Std.show()
+
+    def PlotFWHMchange(self):
+        self.FWHMPlot = pg.PlotWidget()
+        self.FWHMPlot.setTitle("FWHM Position")
+        self.FWHMPlot.plot(self.FWHM[0:self.CurrentFrame])
+        self.window_plot_FWHM = QMainWindow()
+        self.window_plot_FWHM.setCentralWidget(self.FWHMPlot)
+        self.window_plot_FWHM.show()
 
     def PlotYchange(self):
         self.Y_Plot = pg.PlotWidget()
-        self.X_Plot.setTitle("Y Position")
+        self.Y_Plot.setTitle("Y Position")
         self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame])
         self.window_plot_y = QMainWindow()
         self.window_plot_y.setCentralWidget(self.Y_Plot)
@@ -189,18 +207,18 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
         FrameNP = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
         # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
-        upper_limit = 0.905
-        lower_limit = 0.895
+        upper_limit = 0.505
+        lower_limit = 0.495
         cond = True # makes sure the elipse is detected
         while cond:
             yx_coords = np.column_stack(np.where((FrameNP >= lower_limit) & (FrameNP <= upper_limit)))
             if np.max(np.shape(yx_coords)) > 2:
-                upper_limit = 0.905
-                lower_limit = 0.895
+                upper_limit = 0.505
+                lower_limit = 0.495
                 cond = False
             else:
-                upper_limit = upper_limit + 0.01
-                lower_limit = lower_limit - 0.01
+                upper_limit = upper_limit + 0.005
+                lower_limit = lower_limit - 0.005
             if (upper_limit > 1) or (lower_limit < 0):
                 print('Make sure camera is open')
                 cond = False
@@ -229,11 +247,13 @@ class PyBeamProfilerGUI(QMainWindow):
         popt2, pcov2 = sp.optimize.curve_fit(self.gauss, x_col, sum_col)
 
         self.CurrentFrame = i
-        self.ui.circularity_text.setText(str(2 * math.sqrt(np.min(d_from_center)) / 2 * math.sqrt(np.max(d_from_center))))
+        self.ui.circularity_text.setText(str( math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))))
         self.ui.std_LA_text.setText(str(abs(popt2[2])))
         self.ui.std_SA_text.setText(str(abs(popt1[2])))
+        self.FWHM[i] = 2 * math.sqrt(np.max(d_from_center))
         self.X_Max_Pos[i] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[i] = Y_Center * float(self.pixel_size.text())
+        self.std2[i] = abs(popt2[2])
         self.ui.x_position_text.setText(str(X_Center))
         self.ui.y_position_text.setText(str(Y_Center))
 
