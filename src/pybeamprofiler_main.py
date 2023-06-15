@@ -254,8 +254,8 @@ class PyBeamProfilerGUI(QMainWindow):
         self.X_Max_Pos[i] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[i] = Y_Center * float(self.pixel_size.text())
         self.std2[i] = abs(popt2[2])
-        self.ui.x_position_text.setText(str(X_Center))
-        self.ui.y_position_text.setText(str(Y_Center))
+        self.ui.x_position_text.setText(str(self.X_Max_Pos[i]))
+        self.ui.y_position_text.setText(str(self.Y_Max_Pos[i]))
         self.Plot_Gauss.plot(x_col, sum_col, clear=True)
 
 
