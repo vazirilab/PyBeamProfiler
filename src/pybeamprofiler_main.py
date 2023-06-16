@@ -144,24 +144,24 @@ class PyBeamProfilerGUI(QMainWindow):
 
             im = skimage.io.imread(self.allfiles[i])
             im = (im - np.min(im)) / (np.max(im) - np.min(im))  # normalize the matrix
-            upper_limit = 0.905
-            lower_limit = 0.895
+            upper_limit = 0.505
+            lower_limit = 0.495
             cond = True  # makes sure the elipse is detected
             while cond:
                 yx_coords = np.column_stack(np.where((im >= lower_limit) & (im <= upper_limit)))
                 if np.max(np.shape(yx_coords)) > 2:
-                    upper_limit = 0.905
-                    lower_limit = 0.895
+                    upper_limit = 0.505
+                    lower_limit = 0.495
                     cond = False
                 else:
-                    upper_limit = upper_limit + 0.01
-                    lower_limit = lower_limit - 0.01
+                    upper_limit = upper_limit + 0.005
+                    lower_limit = lower_limit - 0.005
                 if (upper_limit > 1) or (lower_limit < 0):
                     print(f'Frame number {i} was skipped')
                     i = i+1
                     im = skimage.io.imread(self.allfiles[i])
-                    upper_limit = 0.905
-                    lower_limit = 0.895
+                    upper_limit = 0.505
+                    lower_limit = 0.495
                 if i >= self.Nr_allfiles - 1:
                     break
 

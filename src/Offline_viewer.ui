@@ -27,42 +27,6 @@
      <string>Plot X-Position along time</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="lineEdit_7">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>120</y>
-      <width>91</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Std Long axis</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="std_LA_text_offline">
-    <property name="geometry">
-     <rect>
-      <x>150</x>
-      <y>120</y>
-      <width>161</width>
-      <height>21</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="std_SA_text_offline">
-    <property name="geometry">
-     <rect>
-      <x>150</x>
-      <y>150</y>
-      <width>161</width>
-      <height>21</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QLineEdit" name="lineEdit_5">
     <property name="enabled">
      <bool>false</bool>
@@ -77,22 +41,6 @@
     </property>
     <property name="text">
      <string>X-Position</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="lineEdit_8">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>150</y>
-      <width>91</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Std Short axis</string>
     </property>
    </widget>
    <widget class="QPushButton" name="Y_Pos_Plot_offline">
@@ -115,7 +63,7 @@
     <property name="geometry">
      <rect>
       <x>60</x>
-      <y>90</y>
+      <y>100</y>
       <width>91</width>
       <height>21</height>
      </rect>
@@ -131,7 +79,7 @@
     <property name="geometry">
      <rect>
       <x>60</x>
-      <y>180</y>
+      <y>140</y>
       <width>91</width>
       <height>21</height>
      </rect>
@@ -165,7 +113,7 @@
     <property name="geometry">
      <rect>
       <x>150</x>
-      <y>90</y>
+      <y>100</y>
       <width>161</width>
       <height>21</height>
      </rect>
@@ -175,7 +123,7 @@
     <property name="geometry">
      <rect>
       <x>150</x>
-      <y>180</y>
+      <y>140</y>
       <width>161</width>
       <height>21</height>
      </rect>
