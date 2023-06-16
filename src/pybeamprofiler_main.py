@@ -26,12 +26,14 @@ class Thread(QtCore.QThread):
     serial = '20270803'  # serisl of the flir cam
     ppmm = 0.0069  # pixels per mm to convert position to mm
     ppmm = 1 / ppmm
-    system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
-    version = system.GetLibraryVersion()  # Get current library version
+
     ExpTime_us = 8000
-    cam_list = system.GetCameras()  # Retrieve list of cameras from the system
+
 
     def run(self):
+        self.system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
+        self.version = self.system.GetLibraryVersion()  # Get current library version
+        self.cam_list = self.system.GetCameras()  # Retrieve list of cameras from the system
         self.cam = self.cam_list.GetBySerial(self.serial)
         self.cam.Init()
         self.processor = PySpin.ImageProcessor()
@@ -40,11 +42,11 @@ class Thread(QtCore.QThread):
         for i in range(self.NUM_IMG):
             # gg = np.random.rand(200, 200) * 1155
             # height, width = gg.shape
-            image_result = self.cam.GetNextImage(1000)
+            image_result = self.cam.GetNextImage(1000)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
 
             time.sleep(0.01)
-            self.changePixmap.emit(FrameNP, i)
+            self.changePixmap.emit(FrameNP, i) # send the frame and the current frame number to the GUI
         self.cam.EndAcquisition()
         self.cam.DeInit()
 
@@ -59,7 +61,10 @@ class PyBeamProfilerGUI(QMainWindow):
         self.print_pixel_size_info.clicked.connect(self.pixel_size_info)
         self.Open_Viewer.clicked.connect(self.OpenViewer)
         self.start_acquisition.clicked.connect(self.StartAcquisition)
+        self.ExpTimeInfo.clicked.connect(self.exp_time_info)
         self.actionOpen.triggered.connect(self.OpenFile)
+        self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
+        self.actionAbout.triggered.connect(self.PrintAboutInfo)
         self.cam_serial.setText('20270803')
         self.nr_of_frames.setText('1000')
         self.pixel_size.setText('0.0069')
@@ -192,8 +197,28 @@ class PyBeamProfilerGUI(QMainWindow):
     def nr_of_frames_info(self):
         self.printed_info.setText('     Please enter the number of frames of the recording.')
 
+    def PrintAnalysisInfo(self):
+        self.printed_info.setText('     This GUI processes consecutive frames of a laser beam. The elliptic shape of'
+                                  ' the beam is detected by selecting the pixels with values within an intensity range '
+                                  '(between 49.5% and 50.5%). The center of this ellipse is detected and the point with'
+                                  ' the largest distance from the center will represent the long axis of the ellipse. A'
+                                  ' Gaussian-fit is used to get the Std of the beam and the FWHM is calculated directly'
+                                  ' from the frame. The user can upload images to the GUI or stream a video from a FLIR'
+                                  ' camera.')
+
+    def PrintAboutInfo(self):
+        self.printed_info.setText(f'  Name: BeamProfiler \n'
+                                  f'  Version: 1.0 \n'
+                                  f'  Author: Mohamed Shehata\n'
+                                  f'  Supervision: Ph.D. Tobias Önol-Nöbauer \n'
+                                  f'  16.06.2023 The Rockefeller University\n'
+                                  f'  New York, USA \n')
+
     def pixel_size_info(self):
-        self.printed_info.setText('     Please enter the pixel size of the camera you are using.')
+        self.printed_info.setText('     Please enter the pixel size of the camera you are using in mm.')
+
+    def exp_time_info(self):
+        self.printed_info.setText('     Please enter the Exposure time of the camera you are using in micro-seconds.')
 
     def OpenViewer(self):
 
@@ -241,7 +266,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
         x_col = np.linspace(0, FramePIL.height - 1, num=FramePIL.height) * float(self.pixel_size.text())  # dim in mm
         x_rows = np.linspace(0, FramePIL.width - 1, num=FramePIL.width) * float(self.pixel_size.text())  # dim in mm
-
+        # curve fitting
         popt1, pcov1 = sp.optimize.curve_fit(self.gauss, x_rows, sum_rows)
 
         popt2, pcov2 = sp.optimize.curve_fit(self.gauss, x_col, sum_col)
@@ -265,13 +290,13 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pos2 = np.zeros(int(self.nr_of_frames.text()))
         self.std2 = np.zeros(int(self.nr_of_frames.text()))
         self.FWHM = np.zeros(int(self.nr_of_frames.text()))
-        self.Plot_Gauss = pg.PlotWidget()
+        self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
         self.Plot_Gauss.setTitle("Gaussian Dist.")
         self.window_Plot_Gauss = QMainWindow()
         self.window_Plot_Gauss.setCentralWidget(self.Plot_Gauss)
         self.window_Plot_Gauss.show()
-
-        th = Thread(self)
+        self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
+        th = Thread(self)  # calling the thread of the camera
         th.changePixmap.connect(self.ShowFrame)
         th.NUM_IMG = int(self.nr_of_frames.text())
         th.serial = (self.cam_serial.text())
