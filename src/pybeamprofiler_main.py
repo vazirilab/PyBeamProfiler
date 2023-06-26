@@ -21,9 +21,10 @@ import pyqtgraph as pg
 
 # A thread for the camera. It emits frames and the number of the current frame
 class Thread(QtCore.QThread):
-    changePixmap = QtCore.pyqtSignal(np.ndarray, int)
+    changePixmap = QtCore.pyqtSignal(np.ndarray, int) # a signal to renew each frame
+    # those values are initial numbers that will be redefined in the GUI
     NUM_IMG = 100000
-    serial = '20270803'  # serisl of the flir cam
+    serial = '20270803'  # seriel of the flir cam
     ppmm = 0.0069  # pixels per mm to convert position to mm
     ppmm = 1 / ppmm
 
@@ -86,6 +87,8 @@ class PyBeamProfilerGUI(QMainWindow):
         self.StdPlot = pg.PlotWidget()
         self.StdPlot.setTitle("Std Position")
         self.StdPlot.plot(self.std2[0:self.CurrentFrame])
+        self.StdPlot.setLabel(axis='left', text='Std/a.u.')
+        self.StdPlot.setLabel(axis='bottom', text='Frame/a.u.')
         self.window_plot_Std = QMainWindow()
         self.window_plot_Std.setCentralWidget(self.StdPlot)
         self.window_plot_Std.show()
@@ -94,38 +97,49 @@ class PyBeamProfilerGUI(QMainWindow):
         self.FWHMPlot = pg.PlotWidget()
         self.FWHMPlot.setTitle("FWHM Position")
         self.FWHMPlot.plot(self.FWHM[0:self.CurrentFrame])
+        self.FWHMPlot.setLabel(axis='left', text='Width/mm')
+        self.FWHMPlot.setLabel(axis='bottom', text='Frame/a.u.')
         self.window_plot_FWHM = QMainWindow()
         self.window_plot_FWHM.setCentralWidget(self.FWHMPlot)
         self.window_plot_FWHM.show()
 
     def PlotYchange(self):
         self.Y_Plot = pg.PlotWidget()
-        self.Y_Plot.setTitle("Y Position")
+        self.Y_Plot.setTitle("Centroid Y-Position")
         self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame])
+        self.Y_Plot.setLabel(axis='left', text='Position/mm')
+        self.Y_Plot.setLabel(axis='bottom', text='Frame/a.u.')
         self.window_plot_y = QMainWindow()
         self.window_plot_y.setCentralWidget(self.Y_Plot)
         self.window_plot_y.show()
 
     def PlotXchange(self):
         self.X_Plot = pg.PlotWidget()
-        self.X_Plot.setTitle("X Position")
+        self.X_Plot.setTitle("Centroid X-Position")
         self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame])
+        self.X_Plot.setLabel(axis='left', text='Position/mm')
+        self.X_Plot.setLabel(axis='bottom', text='Frame/a.u.')
         self.window_plot_x= QMainWindow()
         self.window_plot_x.setCentralWidget(self.X_Plot)
         self.window_plot_x.show()
 
     def PlotXchange_offline(self):
         self.X_Plot_offline = pg.PlotWidget()
-        self.X_Plot_offline.setTitle("X Position")
+        self.X_Plot_offline.setTitle("Centroid X-Position")
         self.X_Plot_offline.plot(self.X_Max_Pos_offline)
         self.window_plot_x_offline = QMainWindow()
+        self.X_Plot_offline.setLabel(axis='left', text='Position/mm')
+        self.X_Plot_offline.setLabel(axis='bottom', text='Frame/a.u.')
         self.window_plot_x_offline.setCentralWidget(self.X_Plot_offline)
+
         self.window_plot_x_offline.show()
 
     def PlotYchange_offline(self):
         self.Y_Plot_offline = pg.PlotWidget()
-        self.Y_Plot_offline.setTitle("Y Position")
+        self.Y_Plot_offline.setTitle("Centroid Y-Position")
         self.Y_Plot_offline.plot(self.Y_Max_Pos_offline)
+        self.Y_Plot_offline.setLabel(axis='left', text='Position/mm')
+        self.Y_Plot_offline.setLabel(axis='bottom', text='Frame/a.u.')
         self.window_plot_y_offline = QMainWindow()
         self.window_plot_y_offline.setCentralWidget(self.Y_Plot_offline)
         self.window_plot_y_offline.show()
@@ -198,13 +212,14 @@ class PyBeamProfilerGUI(QMainWindow):
         self.printed_info.setText('     Please enter the number of frames of the recording.')
 
     def PrintAnalysisInfo(self):
-        self.printed_info.setText('     This GUI processes consecutive frames of a laser beam. The elliptic shape of'
-                                  ' the beam is detected by selecting the pixels with values within an intensity range '
-                                  '(between 49.5% and 50.5%). The center of this ellipse is detected and the point with'
-                                  ' the largest distance from the center will represent the long axis of the ellipse. A'
-                                  ' Gaussian-fit is used to get the Std of the beam and the FWHM is calculated directly'
-                                  ' from the frame. The user can upload images to the GUI or stream a video from a FLIR'
-                                  ' camera.')
+        self.printed_info.setText(f'     This GUI processes consecutive frames of a laser beam. The elliptic shape of'
+                                  f' the beam is detected by selecting the pixels with values within an intensity range '
+                                  f'(between 49.5% and 50.5%). The center of this ellipse is detected and the point with'
+                                  f' the largest distance from the center will represent the long axis of the ellipse. '
+                                  f'\n A'
+                                  f' Gaussian-fit is used to get the Std of the beam and the FWHM is calculated directly'
+                                  f' from the frame. The user can upload images to the GUI or stream a video from a FLIR'
+                                  f' camera.')
 
     def PrintAboutInfo(self):
         self.printed_info.setText(f'  Name: BeamProfiler \n'
@@ -291,7 +306,9 @@ class PyBeamProfilerGUI(QMainWindow):
         self.std2 = np.zeros(int(self.nr_of_frames.text()))
         self.FWHM = np.zeros(int(self.nr_of_frames.text()))
         self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
-        self.Plot_Gauss.setTitle("Gaussian Dist.")
+        self.Plot_Gauss.setTitle("Gaussian Cross Section.")
+        self.Plot_Gauss.setLabel(axis='left', text='Average Intensity/a.u.')
+        self.Plot_Gauss.setLabel(axis='bottom', text='Distance/mm')
         self.window_Plot_Gauss = QMainWindow()
         self.window_Plot_Gauss.setCentralWidget(self.Plot_Gauss)
         self.window_Plot_Gauss.show()
@@ -322,7 +339,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 result.setColor(i, QtGui.QColor(i, i, i).rgb())
         elif gray.dtype == np.uint16:
             # This assumes that a 16bit image is only 12bit resolution: 2^16-2^12=16
-            gray = (gray / 16).astype(np.uint8)
+            gray = (gray / 256).astype(np.uint8)
             gray = np.require(gray, np.uint8, 'C')
             h, w = gray.shape
             result = QtGui.QImage(gray.data, w, h, QtGui.QImage.Format_Indexed8)

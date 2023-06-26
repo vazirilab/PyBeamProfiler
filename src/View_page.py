@@ -101,15 +101,15 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "View Page"))
-        self.lineEdit.setText(_translate("MainWindow", "Resultes"))
+        self.lineEdit.setText(_translate("MainWindow", "Results"))
         self.lineEdit_2.setText(_translate("MainWindow", "Cam View"))
         self.lineEdit_5.setText(_translate("MainWindow", "X-Position"))
         self.lineEdit_6.setText(_translate("MainWindow", "Y-Position"))
         self.lineEdit_7.setText(_translate("MainWindow", "Std Long axis"))
         self.lineEdit_8.setText(_translate("MainWindow", "Std Short axis"))
         self.Circularity.setText(_translate("MainWindow", "Circularity"))
-        self.X_Pos_Plot.setText(_translate("MainWindow", "Plot X-Position along time"))
-        self.Y_Pos_Plot.setText(_translate("MainWindow", "Plot Y-Position along time"))
+        self.X_Pos_Plot.setText(_translate("MainWindow", "Plot X-Position  Vs Frame"))
+        self.Y_Pos_Plot.setText(_translate("MainWindow", "Plot Y-Position  Vs Frame"))
         self.FWHM_Plot.setText(_translate("MainWindow", "Plot FWHM"))
         self.Std_LA_Plot.setText(_translate("MainWindow", "Plot Std for Long Axis"))
         self.label.setText(_translate("MainWindow", "mm"))

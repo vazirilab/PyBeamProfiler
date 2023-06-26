@@ -32,7 +32,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Resultes</string>
+     <string>Results</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="lineEdit_2">
@@ -215,7 +215,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Plot X-Position along time</string>
+     <string>Plot X-Position  Vs Frame</string>
     </property>
    </widget>
    <widget class="QPushButton" name="Y_Pos_Plot">
@@ -228,7 +228,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Plot Y-Position along time</string>
+     <string>Plot Y-Position  Vs Frame</string>
     </property>
    </widget>
    <widget class="QPushButton" name="FWHM_Plot">
