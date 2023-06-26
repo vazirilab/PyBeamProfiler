@@ -27,7 +27,7 @@ class Thread(QtCore.QThread):
     serial = '20270803'  # seriel of the flir cam
     ppmm = 0.0069  # pixels per mm to convert position to mm
     ppmm = 1 / ppmm
-
+    frame_rate = 50.0
     ExpTime_us = 8000
 
 
@@ -46,7 +46,7 @@ class Thread(QtCore.QThread):
             image_result = self.cam.GetNextImage(1000)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
 
-            time.sleep(0.01)
+            time.sleep(1 / self.frame_rate)
             self.changePixmap.emit(FrameNP, i) # send the frame and the current frame number to the GUI
         self.cam.EndAcquisition()
         self.cam.DeInit()
@@ -63,6 +63,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.Open_Viewer.clicked.connect(self.OpenViewer)
         self.start_acquisition.clicked.connect(self.StartAcquisition)
         self.ExpTimeInfo.clicked.connect(self.exp_time_info)
+        self.FrameRateInfo.clicked.connect(self.frame_rate_info)
         self.actionOpen.triggered.connect(self.OpenFile)
         self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
         self.actionAbout.triggered.connect(self.PrintAboutInfo)
@@ -70,6 +71,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.nr_of_frames.setText('1000')
         self.pixel_size.setText('0.0069')
         self.ExpTime_text.setText('7000')
+        self.FrameRate_text.setText('50')
 
         self.ui = Ui_MainWindow()
         self.window1 = QMainWindow()
@@ -85,7 +87,7 @@ class PyBeamProfilerGUI(QMainWindow):
         
     def PlotStdchange(self):
         self.StdPlot = pg.PlotWidget()
-        self.StdPlot.setTitle("Std Position")
+        self.StdPlot.setTitle("Std Value")
         self.StdPlot.plot(self.std2[0:self.CurrentFrame])
         self.StdPlot.setLabel(axis='left', text='Std/a.u.')
         self.StdPlot.setLabel(axis='bottom', text='Frame/a.u.')
@@ -95,7 +97,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def PlotFWHMchange(self):
         self.FWHMPlot = pg.PlotWidget()
-        self.FWHMPlot.setTitle("FWHM Position")
+        self.FWHMPlot.setTitle("FWHM Value")
         self.FWHMPlot.plot(self.FWHM[0:self.CurrentFrame])
         self.FWHMPlot.setLabel(axis='left', text='Width/mm')
         self.FWHMPlot.setLabel(axis='bottom', text='Frame/a.u.')
@@ -229,6 +231,9 @@ class PyBeamProfilerGUI(QMainWindow):
                                   f'  16.06.2023 The Rockefeller University\n'
                                   f'  New York, USA \n')
 
+    def frame_rate_info(self):
+        self.printed_info.setText('     Please enter the desired frame rate (Max frame rate is 55 per second)')
+
     def pixel_size_info(self):
         self.printed_info.setText('     Please enter the pixel size of the camera you are using in mm.')
 
@@ -318,6 +323,7 @@ class PyBeamProfilerGUI(QMainWindow):
         th.NUM_IMG = int(self.nr_of_frames.text())
         th.serial = (self.cam_serial.text())
         th.ExpTime_us = float(self.ExpTime_text.text())
+        th.frame_rate = float(self.FrameRate_text.text())
         th.start()
 
     def gauss(self, x, A, mu, sigma, off):

@@ -196,7 +196,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>270</y>
+      <y>300</y>
       <width>201</width>
       <height>61</height>
      </rect>
@@ -209,7 +209,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>340</y>
+      <y>370</y>
       <width>201</width>
       <height>61</height>
      </rect>
@@ -281,6 +281,61 @@
     </property>
     <property name="text">
      <string>us</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="lineEdit_8">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>250</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Frame Rate</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="FrameRateInfo">
+    <property name="geometry">
+     <rect>
+      <x>270</x>
+      <y>250</y>
+      <width>21</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>?</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="FrameRate_text">
+    <property name="geometry">
+     <rect>
+      <x>120</x>
+      <y>250</y>
+      <width>121</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_3">
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>260</y>
+      <width>21</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Hz</string>
     </property>
    </widget>
   </widget>
