@@ -281,8 +281,13 @@ class PyBeamProfilerGUI(QMainWindow):
         FramePIL = FramePIL.crop(
             (round(X_Center - 190), round(Y_Center - 190), round(X_Center + 190), round(Y_Center + 190)))
         FramePIL = FramePIL.rotate(abs(math.atan(m) * 180 / math.pi) + 90)
+        # obtain a cross-section of the gaussian beam
+        Height = FramePIL.height
+        Width = FramePIL.width
+        FramePIL_col = FramePIL.crop(
+            (round((Width/2) - 3), 0, round((Width/2) + 3), Height)) # 6 pixels width
         sum_rows = np.mean(FramePIL, axis=0)  # get array with the sums of the rows
-        sum_col = np.mean(FramePIL, axis=1)  # get array with the sums of the columns
+        sum_col = np.mean(FramePIL_col, axis=1)  # get array with the sums of the columns
 
         x_col = np.linspace(0, FramePIL.height - 1, num=FramePIL.height) * float(self.pixel_size.text())  # dim in mm
         x_rows = np.linspace(0, FramePIL.width - 1, num=FramePIL.width) * float(self.pixel_size.text())  # dim in mm
