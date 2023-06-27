@@ -29,9 +29,12 @@ class Thread(QtCore.QThread):
     ppmm = 1 / ppmm
     frame_rate = 50.0
     ExpTime_us = 8000
+    Type = "FLIR Cam"
+    file_names = None
 
 
     def run(self):
+       if self.Type == "FLIR Cam":
         self.system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
         self.version = self.system.GetLibraryVersion()  # Get current library version
         self.cam_list = self.system.GetCameras()  # Retrieve list of cameras from the system
@@ -50,6 +53,20 @@ class Thread(QtCore.QThread):
             self.changePixmap.emit(FrameNP, i) # send the frame and the current frame number to the GUI
         self.cam.EndAcquisition()
         self.cam.DeInit()
+       elif self.Type == "Data Stream": # to open data in the form of stream
+           print(0)
+
+           self.file_names = self.file_names[0]
+           file_Nr = len(self.file_names)
+           for i in range(file_Nr):
+
+               FrameNP = skimage.io.imread(self.file_names[i])  # get the result as a numpy array
+
+               time.sleep(1 / self.frame_rate)
+               self.changePixmap.emit(FrameNP, i)  # send the frame and the current frame number to the GUI
+
+
+
 
 
 class PyBeamProfilerGUI(QMainWindow):
@@ -329,6 +346,10 @@ class PyBeamProfilerGUI(QMainWindow):
         th.serial = (self.cam_serial.text())
         th.ExpTime_us = float(self.ExpTime_text.text())
         th.frame_rate = float(self.FrameRate_text.text())
+
+        th.Type = self.StreamType.currentText()
+        if th.Type == "Data Stream":
+         th.file_names = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
         th.start()
 
     def gauss(self, x, A, mu, sigma, off):
