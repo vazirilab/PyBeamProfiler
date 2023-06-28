@@ -379,6 +379,7 @@ class PyBeamProfilerGUI(QMainWindow):
     def StartAcquisition(self):
         self.SavedFileNumber = 0
         if self.StreamType.currentText() == "FLIR Cam":
+            self.FileStreamNr = int(self.nr_of_frames.text())
             if int(self.nr_of_frames.text()) < int(self.FramesPerFile_text.text()):
               self.X_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
               self.Y_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
