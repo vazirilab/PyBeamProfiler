@@ -56,7 +56,7 @@ class Thread(QtCore.QThread):
        elif self.Type == "Data Stream": # to open data in the form of stream
            print(0)
 
-           self.file_names = self.file_names[0]
+
            file_Nr = len(self.file_names)
            for i in range(file_Nr):
 
@@ -89,6 +89,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pixel_size.setText('0.0069')
         self.ExpTime_text.setText('7000')
         self.FrameRate_text.setText('50')
+        self.SavingOption.stateChanged.connect(self.Saving_Option)
 
         self.ui = Ui_MainWindow()
         self.window1 = QMainWindow()
@@ -97,10 +98,24 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
         self.ui.FWHM_Plot.clicked.connect(self.PlotFWHMchange)
         self.ui.Std_LA_Plot.clicked.connect(self.PlotStdchange)
-        
+
         self.ui_offline = Ui_Ofline_Viewer()
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
+
+    def Saving_Option(self):
+        if self.SavingOption.isChecked():
+            self.DataFileName = QFileDialog.getSaveFileName(self, 'Save File', 'D:', "CSV Files (*.csv )")
+            self.DataFileName = self.DataFileName[0]
+            if self.DataFileName[len(self.DataFileName)-4: len(self.DataFileName)] != '.csv' and \
+                    self.DataFileName[len(self.DataFileName)-4: len(self.DataFileName)] != '.CSV':
+               self.DataFileName = self.DataFileName + '.csv'
+        self.printed_info.setText('     Please select the name of the csv file for the data. If the number of frames '
+                                  'is more than 10000, Every 10000 of the data will be saved in a different file ')
+
+
+
+
         
     def PlotStdchange(self):
         self.StdPlot = pg.PlotWidget()
@@ -324,14 +339,18 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.x_position_text.setText(str(self.X_Max_Pos[i]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[i]))
         self.Plot_Gauss.plot(x_col, sum_col, clear=True)
+        if self.CurrentFrame == int(self.nr_of_frames.text()) or self.CurrentFrame == self.FileStreamNr-1:
+            np.savetxt(self.DataFileName, [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+
 
 
     def StartAcquisition(self):
-        self.X_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
-        self.Y_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
-        self.pos2 = np.zeros(int(self.nr_of_frames.text()))
-        self.std2 = np.zeros(int(self.nr_of_frames.text()))
-        self.FWHM = np.zeros(int(self.nr_of_frames.text()))
+        if self.StreamType.currentText() == "FLIR Cam":
+            self.X_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
+            self.Y_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
+            self.pos2 = np.zeros(int(self.nr_of_frames.text()))
+            self.std2 = np.zeros(int(self.nr_of_frames.text()))
+            self.FWHM = np.zeros(int(self.nr_of_frames.text()))
         self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
         self.Plot_Gauss.setTitle("Gaussian Cross Section.")
         self.Plot_Gauss.setLabel(axis='left', text='Average Intensity/a.u.')
@@ -349,7 +368,14 @@ class PyBeamProfilerGUI(QMainWindow):
 
         th.Type = self.StreamType.currentText()
         if th.Type == "Data Stream":
-         th.file_names = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
+            th.file_names = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
+            th.file_names = th.file_names[0]
+            self.FileStreamNr = len(th.file_names)
+            self.X_Max_Pos = np.zeros(self.FileStreamNr) # array to follow the X-position of the beam center
+            self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
+            self.pos2 = np.zeros(self.FileStreamNr)
+            self.std2 = np.zeros(self.FileStreamNr)
+            self.FWHM = np.zeros(self.FileStreamNr)
         th.start()
 
     def gauss(self, x, A, mu, sigma, off):
