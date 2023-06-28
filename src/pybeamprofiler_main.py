@@ -54,8 +54,6 @@ class Thread(QtCore.QThread):
         self.cam.EndAcquisition()
         self.cam.DeInit()
        elif self.Type == "Data Stream": # to open data in the form of stream
-           print(0)
-
 
            file_Nr = len(self.file_names)
            for i in range(file_Nr):
@@ -361,7 +359,6 @@ class PyBeamProfilerGUI(QMainWindow):
                            [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
                 self.SavedFileNumber = self.SavedFileNumber + 1
                 self.RemainingFrames = self.RemainingFrames - int(self.FramesPerFile_text.text())
-                print(self.RemainingFrames)
                 self.X_Max_Pos = np.zeros(
                     int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
                 self.Y_Max_Pos = np.zeros(
