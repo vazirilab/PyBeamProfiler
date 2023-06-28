@@ -195,9 +195,9 @@
    <widget class="QPushButton" name="Open_Viewer">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>380</y>
-      <width>201</width>
+      <x>10</x>
+      <y>450</y>
+      <width>141</width>
       <height>61</height>
      </rect>
     </property>
@@ -208,9 +208,9 @@
    <widget class="QPushButton" name="start_acquisition">
     <property name="geometry">
      <rect>
-      <x>60</x>
+      <x>150</x>
       <y>450</y>
-      <width>201</width>
+      <width>141</width>
       <height>61</height>
      </rect>
     </property>
@@ -403,6 +403,38 @@
     </property>
     <property name="text">
      <string>Save Results</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="lineEdit_9">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>360</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Frames / File</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="FramesPerFile_text">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>120</x>
+      <y>360</y>
+      <width>121</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
     </property>
    </widget>
   </widget>

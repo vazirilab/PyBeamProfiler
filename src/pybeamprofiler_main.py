@@ -89,7 +89,10 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pixel_size.setText('0.0069')
         self.ExpTime_text.setText('7000')
         self.FrameRate_text.setText('50')
+        self.FramesPerFile_text.setText('3')
         self.SavingOption.stateChanged.connect(self.Saving_Option)
+        self.SavedFileNumber = 0
+        self.RemainingFrames = None
 
         self.ui = Ui_MainWindow()
         self.window1 = QMainWindow()
@@ -107,11 +110,16 @@ class PyBeamProfilerGUI(QMainWindow):
         if self.SavingOption.isChecked():
             self.DataFileName = QFileDialog.getSaveFileName(self, 'Save File', 'D:', "CSV Files (*.csv )")
             self.DataFileName = self.DataFileName[0]
+            self.FramesPerFile_text.setEnabled(True)
             if self.DataFileName[len(self.DataFileName)-4: len(self.DataFileName)] != '.csv' and \
                     self.DataFileName[len(self.DataFileName)-4: len(self.DataFileName)] != '.CSV':
                self.DataFileName = self.DataFileName + '.csv'
+        else:
+            self.FramesPerFile_text.setEnabled(False)
         self.printed_info.setText('     Please select the name of the csv file for the data. If the number of frames '
                                   'is more than 10000, Every 10000 of the data will be saved in a different file ')
+
+
 
 
 
@@ -328,29 +336,67 @@ class PyBeamProfilerGUI(QMainWindow):
 
         popt2, pcov2 = sp.optimize.curve_fit(self.gauss, x_col, sum_col)
 
-        self.CurrentFrame = i
+        self.CurrentFrame = i - self.SavedFileNumber * int(self.FramesPerFile_text.text())
         self.ui.circularity_text.setText(str( math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))))
         self.ui.std_LA_text.setText(str(abs(popt2[2])))
         self.ui.std_SA_text.setText(str(abs(popt1[2])))
-        self.FWHM[i] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
-        self.X_Max_Pos[i] = X_Center * float(self.pixel_size.text())
-        self.Y_Max_Pos[i] = Y_Center * float(self.pixel_size.text())
-        self.std2[i] = abs(popt2[2])
-        self.ui.x_position_text.setText(str(self.X_Max_Pos[i]))
-        self.ui.y_position_text.setText(str(self.Y_Max_Pos[i]))
+        self.FWHM[self.CurrentFrame] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
+        self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
+        self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
+        self.std2[self.CurrentFrame] = abs(popt2[2])
+        self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
+        self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
         self.Plot_Gauss.plot(x_col, sum_col, clear=True)
-        if self.CurrentFrame == int(self.nr_of_frames.text()) or self.CurrentFrame == self.FileStreamNr-1:
-            np.savetxt(self.DataFileName, [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+
+        if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
+                                               (self.CurrentFrame == self.FileStreamNr-1) or
+                                               (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) or
+                                               self.RemainingFrames == int(self.nr_of_frames.text()) -
+                                               int(self.FramesPerFile_text.text()) * self.SavedFileNumber):
+
+
+            if (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) and \
+                    (int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text())):
+                np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
+                           [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+                self.SavedFileNumber = self.SavedFileNumber + 1
+                self.RemainingFrames = self.RemainingFrames - int(self.FramesPerFile_text.text())
+                print(self.RemainingFrames)
+                self.X_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                self.Y_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
+                self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
+                self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+            elif (self.RemainingFrames > 0) and (self.RemainingFrames < int(self.FramesPerFile_text.text())) and \
+                    self.RemainingFrames == int(self.nr_of_frames.text()) - \
+                    int(self.FramesPerFile_text.text()) * self.SavedFileNumber:
+                np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
+                           [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+            else:
+                np.savetxt(self.DataFileName, [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
 
 
 
     def StartAcquisition(self):
+        self.SavedFileNumber = 0
         if self.StreamType.currentText() == "FLIR Cam":
-            self.X_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
-            self.Y_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
-            self.pos2 = np.zeros(int(self.nr_of_frames.text()))
-            self.std2 = np.zeros(int(self.nr_of_frames.text()))
-            self.FWHM = np.zeros(int(self.nr_of_frames.text()))
+            if int(self.nr_of_frames.text()) < int(self.FramesPerFile_text.text()):
+              self.X_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
+              self.Y_Max_Pos = np.zeros(int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
+              self.pos2 = np.zeros(int(self.nr_of_frames.text()))
+              self.std2 = np.zeros(int(self.nr_of_frames.text()))
+              self.FWHM = np.zeros(int(self.nr_of_frames.text()))
+            else:
+                self.X_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                self.Y_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
+                self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
+                self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+
         self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
         self.Plot_Gauss.setTitle("Gaussian Cross Section.")
         self.Plot_Gauss.setLabel(axis='left', text='Average Intensity/a.u.')
@@ -371,11 +417,20 @@ class PyBeamProfilerGUI(QMainWindow):
             th.file_names = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
             th.file_names = th.file_names[0]
             self.FileStreamNr = len(th.file_names)
-            self.X_Max_Pos = np.zeros(self.FileStreamNr) # array to follow the X-position of the beam center
-            self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
-            self.pos2 = np.zeros(self.FileStreamNr)
-            self.std2 = np.zeros(self.FileStreamNr)
-            self.FWHM = np.zeros(self.FileStreamNr)
+            self.nr_of_frames.setText(str(len(th.file_names)))
+            if self.SavingOption.isChecked() and int(self.FramesPerFile_text.text()) < self.FileStreamNr:
+                self.X_Max_Pos = np.zeros(int(self.FramesPerFile_text.text())) # array to follow the X-position of the beam center
+                self.Y_Max_Pos = np.zeros(int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
+                self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
+                self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+            else:
+                  self.X_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the X-position of the beam center
+                  self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
+                  self.pos2 = np.zeros(self.FileStreamNr)
+                  self.std2 = np.zeros(self.FileStreamNr)
+                  self.FWHM = np.zeros(self.FileStreamNr)
+        self.RemainingFrames = int(self.nr_of_frames.text())
         th.start()
 
     def gauss(self, x, A, mu, sigma, off):
