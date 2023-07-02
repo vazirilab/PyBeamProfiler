@@ -75,8 +75,6 @@ class Thread_Data(QtCore.QThread):
             self.changePixmap_Data.emit(FrameNP, i)  # send the frame and the current frame number to the GUI
 
 
-
-
 class PyBeamProfilerGUI(QMainWindow):
     def __init__(self):
         super(PyBeamProfilerGUI, self).__init__()
@@ -97,7 +95,13 @@ class PyBeamProfilerGUI(QMainWindow):
         self.pixel_size.setText('0.0069')
         self.ExpTime_text.setText('7000')
         self.FrameRate_text.setText('50')
-        self.FramesPerFile_text.setText('3')
+        self.FramesPerFile_text.setText('1000')
+        self.cam_serial.textChanged.connect(self.CheckForInt_cam_serial)
+        self.nr_of_frames.textChanged.connect(self.CheckForInt_nr_of_frames)
+        self.pixel_size.textChanged.connect(self.CheckForInt_pixel_size)
+        self.ExpTime_text.textChanged.connect(self.CheckForInt_ExpTime_text)
+        self.FrameRate_text.textChanged.connect(self.CheckForInt_FrameRate_text)
+        self.FramesPerFile_text.textChanged.connect(self.CheckForInt_FramesPerFile_text)
         self.SavingOption.stateChanged.connect(self.Saving_Option)
         self.SavedFileNumber = 0
         self.RemainingFrames = None
@@ -114,6 +118,36 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
 
+    def CheckForInt_cam_serial(self, text):
+        if not text.isdigit():
+            self.printed_info.setText('     Please Make sure all of the parameters are digits')
+            self.cam_serial.setText('20270803')
+
+    def CheckForInt_nr_of_frames(self, text):
+        if not text.isdigit():
+            self.printed_info.setText('     Please Make sure all of the parameters are digits')
+            self.nr_of_frames.setText('1000')
+
+    def CheckForInt_pixel_size(self, text):
+        if not text.isdigit():
+            self.printed_info.setText('     Please Make sure all of the parameters are digits')
+            self.pixel_size.setText('0.0069')
+
+    def CheckForInt_ExpTime_text(self, text):
+        if not text.isdigit():
+            self.printed_info.setText('     Please Make sure all of the parameters are digits')
+            self.ExpTime_text.setText('7000')
+
+    def CheckForInt_FrameRate_text(self, text):
+        if not text.isdigit():
+            self.printed_info.setText('     Please Make sure all of the parameters are digits')
+            self.FrameRate_text.setText('50')
+
+    def CheckForInt_FramesPerFile_text(self, text):
+        if not text.isdigit():
+            self.printed_info.setText('     Please Make sure all of the parameters are digits')
+            self.FramesPerFile_text.setText('1000')
+
     def Saving_Option(self):
         if self.SavingOption.isChecked():
             self.DataFileName = QFileDialog.getSaveFileName(self, 'Save File', 'D:', "CSV Files (*.csv )")
@@ -127,12 +161,6 @@ class PyBeamProfilerGUI(QMainWindow):
         self.printed_info.setText('     Please select the name of the csv file for the data. If the number of frames '
                                   'is more than 10000, Every 10000 of the data will be saved in a different file ')
 
-
-
-
-
-
-        
     def PlotStdchange(self):
         self.StdPlot = pg.PlotWidget()
         self.StdPlot.setTitle("Std Value")
@@ -386,6 +414,15 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def StartAcquisition(self):
         self.SavedFileNumber = 0
+        self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
+        self.Plot_Gauss.setTitle("Gaussian Cross Section.")
+        self.Plot_Gauss.setLabel(axis='left', text='Average Intensity/a.u.')
+        self.Plot_Gauss.setLabel(axis='bottom', text='Distance/mm')
+        self.window_Plot_Gauss = QMainWindow()
+        self.window_Plot_Gauss.setCentralWidget(self.Plot_Gauss)
+        self.window_Plot_Gauss.show()
+        self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
+
         if self.StreamType.currentText() == "FLIR Cam":
             th = Thread_FLIR(self)  # calling the thread of the camera
             th.changePixmap_FLIR.connect(self.ShowFrame)
@@ -411,16 +448,8 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.std2 = np.zeros(int(self.nr_of_frames.text()))
                 self.FWHM = np.zeros(int(self.nr_of_frames.text()))
             th.start()
-        self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
-        self.Plot_Gauss.setTitle("Gaussian Cross Section.")
-        self.Plot_Gauss.setLabel(axis='left', text='Average Intensity/a.u.')
-        self.Plot_Gauss.setLabel(axis='bottom', text='Distance/mm')
-        self.window_Plot_Gauss = QMainWindow()
-        self.window_Plot_Gauss.setCentralWidget(self.Plot_Gauss)
-        self.window_Plot_Gauss.show()
-        self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
 
-        if self.StreamType.currentText() == "Data Stream":
+        elif self.StreamType.currentText() == "Data Stream":
             th = Thread_Data(self)  # calling the thread of the camera
             th.changePixmap_Data.connect(self.ShowFrame)
             th.NUM_IMG = int(self.nr_of_frames.text())
@@ -445,7 +474,6 @@ class PyBeamProfilerGUI(QMainWindow):
                   self.FWHM = np.zeros(self.FileStreamNr)
             th.start()
         self.RemainingFrames = int(self.nr_of_frames.text())
-
 
     def gauss(self, x, A, mu, sigma, off):
         return A * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + off
