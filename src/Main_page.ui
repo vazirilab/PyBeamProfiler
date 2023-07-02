@@ -195,8 +195,8 @@
    <widget class="QPushButton" name="Open_Viewer">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>450</y>
+      <x>70</x>
+      <y>470</y>
       <width>141</width>
       <height>61</height>
      </rect>
@@ -208,8 +208,8 @@
    <widget class="QPushButton" name="start_acquisition">
     <property name="geometry">
      <rect>
-      <x>150</x>
-      <y>450</y>
+      <x>10</x>
+      <y>400</y>
       <width>141</width>
       <height>61</height>
      </rect>
@@ -435,6 +435,22 @@
     </property>
     <property name="text">
      <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stop_acquisition">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>400</y>
+      <width>141</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Stop Acquisition</string>
     </property>
    </widget>
   </widget>

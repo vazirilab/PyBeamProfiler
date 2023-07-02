@@ -29,7 +29,7 @@ class Thread_FLIR(QtCore.QThread):
     ppmm = 1 / ppmm
     frame_rate = 50.0
     ExpTime_us = 8000
-
+    Stop_Loop = False
     file_names = None
 
     def run(self):
@@ -43,8 +43,9 @@ class Thread_FLIR(QtCore.QThread):
         self.cam.BeginAcquisition()
         self.cam.ExposureTime.SetValue(self.ExpTime_us)
         for i in range(self.NUM_IMG):
-            # gg = np.random.rand(200, 200) * 1155
-            # height, width = gg.shape
+            if self.Stop_Loop:
+                break
+
             image_result = self.cam.GetNextImage(1000)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
 
@@ -52,6 +53,7 @@ class Thread_FLIR(QtCore.QThread):
             self.changePixmap_FLIR.emit(FrameNP, i) # send the frame and the current frame number to the GUI
         self.cam.EndAcquisition()
         self.cam.DeInit()
+
 
 
 class Thread_Data(QtCore.QThread):
@@ -63,14 +65,15 @@ class Thread_Data(QtCore.QThread):
     ppmm = 1 / ppmm
     frame_rate = 50.0
     ExpTime_us = 8000
-
+    Stop_Loop = False
     file_names = None
 
     def run(self):
         file_Nr = len(self.file_names)
         for i in range(file_Nr):
             FrameNP = skimage.io.imread(self.file_names[i])  # get the result as a numpy array
-
+            if self.Stop_Loop:
+                break
             time.sleep(1 / self.frame_rate)
             self.changePixmap_Data.emit(FrameNP, i)  # send the frame and the current frame number to the GUI
 
@@ -87,6 +90,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.start_acquisition.clicked.connect(self.StartAcquisition)
         self.ExpTimeInfo.clicked.connect(self.exp_time_info)
         self.FrameRateInfo.clicked.connect(self.frame_rate_info)
+        self.stop_acquisition.clicked.connect(self.StopAcquisition)
         self.actionOpen.triggered.connect(self.OpenFile)
         self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
         self.actionAbout.triggered.connect(self.PrintAboutInfo)
@@ -117,6 +121,10 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_offline = Ui_Ofline_Viewer()
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
+
+    def StopAcquisition(self):
+        self.th.Stop_Loop = True
+        self.stop_acquisition.setEnabled(True)
 
     def CheckForInt_cam_serial(self, text):
         if not text.isdigit():
@@ -413,6 +421,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 np.savetxt(self.DataFileName, [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
 
     def StartAcquisition(self):
+        self.stop_acquisition.setEnabled(True)
         self.SavedFileNumber = 0
         self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
         self.Plot_Gauss.setTitle("Gaussian Cross Section.")
@@ -424,12 +433,12 @@ class PyBeamProfilerGUI(QMainWindow):
         self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
 
         if self.StreamType.currentText() == "FLIR Cam":
-            th = Thread_FLIR(self)  # calling the thread of the camera
-            th.changePixmap_FLIR.connect(self.ShowFrame)
-            th.NUM_IMG = int(self.nr_of_frames.text())
-            th.serial = (self.cam_serial.text())
-            th.ExpTime_us = float(self.ExpTime_text.text())
-            th.frame_rate = float(self.FrameRate_text.text())
+            self.th = Thread_FLIR(self)  # calling the thread of the camera
+            self.th.changePixmap_FLIR.connect(self.ShowFrame)
+            self.th.NUM_IMG = int(self.nr_of_frames.text())
+            self.th.serial = (self.cam_serial.text())
+            self.th.ExpTime_us = float(self.ExpTime_text.text())
+            self.th.frame_rate = float(self.FrameRate_text.text())
             self.FileStreamNr = int(self.nr_of_frames.text())
             if int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text()) and self.SavingOption.isChecked():
                 self.X_Max_Pos = np.zeros(
@@ -447,19 +456,19 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.pos2 = np.zeros(int(self.nr_of_frames.text()))
                 self.std2 = np.zeros(int(self.nr_of_frames.text()))
                 self.FWHM = np.zeros(int(self.nr_of_frames.text()))
-            th.start()
+            self.th.start()
 
         elif self.StreamType.currentText() == "Data Stream":
-            th = Thread_Data(self)  # calling the thread of the camera
-            th.changePixmap_Data.connect(self.ShowFrame)
-            th.NUM_IMG = int(self.nr_of_frames.text())
-            th.serial = (self.cam_serial.text())
-            th.ExpTime_us = float(self.ExpTime_text.text())
-            th.frame_rate = float(self.FrameRate_text.text())
-            th.file_names = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
-            th.file_names = th.file_names[0]
-            self.FileStreamNr = len(th.file_names)
-            self.nr_of_frames.setText(str(len(th.file_names)))
+            self.th = Thread_Data(self)  # calling the thread of the camera
+            self.th.changePixmap_Data.connect(self.ShowFrame)
+            self.th.NUM_IMG = int(self.nr_of_frames.text())
+            self.th.serial = (self.cam_serial.text())
+            self.th.ExpTime_us = float(self.ExpTime_text.text())
+            self.th.frame_rate = float(self.FrameRate_text.text())
+            self.th.file_names = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
+            self.th.file_names = self.th.file_names[0]
+            self.FileStreamNr = len(self.th.file_names)
+            self.nr_of_frames.setText(str(len(self.th.file_names)))
             if self.SavingOption.isChecked() and int(self.FramesPerFile_text.text()) < self.FileStreamNr:
                 self.X_Max_Pos = np.zeros(int(self.FramesPerFile_text.text())) # array to follow the X-position of the beam center
                 self.Y_Max_Pos = np.zeros(int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
@@ -472,7 +481,7 @@ class PyBeamProfilerGUI(QMainWindow):
                   self.pos2 = np.zeros(self.FileStreamNr)
                   self.std2 = np.zeros(self.FileStreamNr)
                   self.FWHM = np.zeros(self.FileStreamNr)
-            th.start()
+            self.th.start()
         self.RemainingFrames = int(self.nr_of_frames.text())
 
     def gauss(self, x, A, mu, sigma, off):
