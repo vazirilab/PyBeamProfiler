@@ -31,7 +31,7 @@ class Thread_FLIR(QtCore.QThread):
     ExpTime_us = 8000
     Stop_Loop = False
     file_names = None
-
+    Auto_ExpTimeCond = False
     def run(self):
 
         self.system = PySpin.System.GetInstance()  # Retrieve singleton reference to system object
@@ -49,11 +49,64 @@ class Thread_FLIR(QtCore.QThread):
             image_result = self.cam.GetNextImage(1000)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
 
+            # setting Auto exposure time mode
+            if self.Auto_ExpTimeCond and np.max(FrameNP) > 240:
+                while np.max(FrameNP) > 240:
+                    self.ExpTime_us = self.ExpTime_us - 100
+                    self.cam.ExposureTime.SetValue(self.ExpTime_us)
+                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                    time.sleep(0.01)
+                    if self.ExpTime_us < 100:
+                        break
+
+            elif np.max(FrameNP) < 120 and self.Auto_ExpTimeCond:
+                while np.max(FrameNP) < 120:
+                    self.ExpTime_us = self.ExpTime_us + 100
+                    self.cam.ExposureTime.SetValue(self.ExpTime_us)
+                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                    time.sleep(0.01)
+                    if self.ExpTime_us > 10000:
+                        break
+
             time.sleep(1 / self.frame_rate)
             self.changePixmap_FLIR.emit(FrameNP, i) # send the frame and the current frame number to the GUI
         self.cam.EndAcquisition()
         self.cam.DeInit()
 
+#class Thread_Web_Cam(QtCore.QThread):
+#    changePixmap_Web_Cam = QtCore.pyqtSignal(np.ndarray, int) # a signal to renew each frame
+#    # those values are initial numbers that will be redefined in the GUI
+#    NUM_IMG = 100000
+#    serial = '20270803'  # seriel of the flir cam
+#    ppmm = 0.0069  # pixels per mm to convert position to mm
+#    ppmm = 1 / ppmm
+#    frame_rate = 50.0
+#    ExpTime_us = 8000
+#    Stop_Loop = False
+#    file_names = None
+#
+#    def run(self):
+#
+#        self.vid = cv2.VideoCapture(self.serial)
+#        self.cam.Init()
+#        self.processor = PySpin.ImageProcessor()
+#        self.cam.BeginAcquisition()
+#        self.cam.ExposureTime.SetValue(self.ExpTime_us)
+#        for i in range(self.NUM_IMG):
+#            if self.Stop_Loop:
+#                break
+#
+                # Capture the video frame
+                # by frame
+ #           self.ret, self.frame = self.vid.read()
+ #           FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+
+#            time.sleep(1 / self.frame_rate)
+#            self.changePixmap_FLIR.emit(FrameNP, i) # send the frame and the current frame number to the GUI
+#        self.cam.EndAcquisition()
+#        self.cam.DeInit()
 
 
 class Thread_Data(QtCore.QThread):
@@ -67,7 +120,7 @@ class Thread_Data(QtCore.QThread):
     ExpTime_us = 8000
     Stop_Loop = False
     file_names = None
-
+    Auto_ExpTimeCond = False
     def run(self):
         file_Nr = len(self.file_names)
         for i in range(file_Nr):
@@ -97,7 +150,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.cam_serial.setText('20270803')
         self.nr_of_frames.setText('1000')
         self.pixel_size.setText('0.0069')
-        self.ExpTime_text.setText('7000')
+        self.ExpTime_text.setText('3000')
         self.FrameRate_text.setText('50')
         self.FramesPerFile_text.setText('1000')
         self.cam_serial.textChanged.connect(self.CheckForInt_cam_serial)
@@ -107,8 +160,11 @@ class PyBeamProfilerGUI(QMainWindow):
         self.FrameRate_text.textChanged.connect(self.CheckForInt_FrameRate_text)
         self.FramesPerFile_text.textChanged.connect(self.CheckForInt_FramesPerFile_text)
         self.SavingOption.stateChanged.connect(self.Saving_Option)
+        self.AutoExpTime.stateChanged.connect(self.Auto_ExpTime)
         self.SavedFileNumber = 0
         self.RemainingFrames = None
+        self.CurrentFrame = 0
+
 
         self.ui = Ui_MainWindow()
         self.window1 = QMainWindow()
@@ -122,9 +178,20 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
 
+    def Auto_ExpTime(self):
+        if self.AutoExpTime.isChecked():
+            if self.CurrentFrame > 0:
+                self.th.Auto_ExpTimeCond = True
+            self.ExpTime_text.setEnabled(False)
+        else:
+            if self.CurrentFrame > 0:
+                self.th.Auto_ExpTimeCond = False
+            self.ExpTime_text.setEnabled(True)
+
+
     def StopAcquisition(self):
         self.th.Stop_Loop = True
-        self.stop_acquisition.setEnabled(True)
+        self.stop_acquisition.setEnabled(False)
 
     def CheckForInt_cam_serial(self, text):
         if not text.isdigit():
@@ -439,6 +506,7 @@ class PyBeamProfilerGUI(QMainWindow):
             self.th.serial = (self.cam_serial.text())
             self.th.ExpTime_us = float(self.ExpTime_text.text())
             self.th.frame_rate = float(self.FrameRate_text.text())
+            self.th.Auto_ExpTimeCond = self.AutoExpTime.isChecked()
             self.FileStreamNr = int(self.nr_of_frames.text())
             if int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text()) and self.SavingOption.isChecked():
                 self.X_Max_Pos = np.zeros(

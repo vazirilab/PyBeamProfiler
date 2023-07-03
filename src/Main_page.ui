@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>868</width>
-    <height>591</height>
+    <width>930</width>
+    <height>671</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -120,8 +120,8 @@
      <rect>
       <x>300</x>
       <y>50</y>
-      <width>511</width>
-      <height>461</height>
+      <width>621</width>
+      <height>551</height>
      </rect>
     </property>
     <property name="font">
@@ -196,7 +196,7 @@
     <property name="geometry">
      <rect>
       <x>70</x>
-      <y>470</y>
+      <y>500</y>
       <width>141</width>
       <height>61</height>
      </rect>
@@ -209,7 +209,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>400</y>
+      <y>430</y>
       <width>141</width>
       <height>61</height>
      </rect>
@@ -225,7 +225,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>240</y>
+      <y>270</y>
       <width>101</width>
       <height>21</height>
      </rect>
@@ -238,7 +238,7 @@
     <property name="geometry">
      <rect>
       <x>120</x>
-      <y>240</y>
+      <y>270</y>
       <width>121</width>
       <height>31</height>
      </rect>
@@ -248,7 +248,7 @@
     <property name="geometry">
      <rect>
       <x>270</x>
-      <y>240</y>
+      <y>270</y>
       <width>21</width>
       <height>28</height>
      </rect>
@@ -274,7 +274,7 @@
     <property name="geometry">
      <rect>
       <x>240</x>
-      <y>250</y>
+      <y>280</y>
       <width>21</width>
       <height>16</height>
      </rect>
@@ -290,7 +290,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>290</y>
+      <y>320</y>
       <width>101</width>
       <height>21</height>
      </rect>
@@ -303,7 +303,7 @@
     <property name="geometry">
      <rect>
       <x>270</x>
-      <y>290</y>
+      <y>320</y>
       <width>21</width>
       <height>28</height>
      </rect>
@@ -316,7 +316,7 @@
     <property name="geometry">
      <rect>
       <x>120</x>
-      <y>290</y>
+      <y>320</y>
       <width>121</width>
       <height>31</height>
      </rect>
@@ -329,7 +329,7 @@
     <property name="geometry">
      <rect>
       <x>240</x>
-      <y>300</y>
+      <y>330</y>
       <width>21</width>
       <height>16</height>
      </rect>
@@ -373,11 +373,6 @@
       <string>FLIR Cam</string>
      </property>
     </item>
-    <item>
-     <property name="text">
-      <string>Web Cam</string>
-     </property>
-    </item>
    </widget>
    <widget class="QPushButton" name="StreamType_info">
     <property name="geometry">
@@ -396,7 +391,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>330</y>
+      <y>360</y>
       <width>101</width>
       <height>31</height>
      </rect>
@@ -412,7 +407,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>360</y>
+      <y>390</y>
       <width>101</width>
       <height>21</height>
      </rect>
@@ -428,7 +423,7 @@
     <property name="geometry">
      <rect>
       <x>120</x>
-      <y>360</y>
+      <y>390</y>
       <width>121</width>
       <height>31</height>
      </rect>
@@ -444,13 +439,26 @@
     <property name="geometry">
      <rect>
       <x>150</x>
-      <y>400</y>
+      <y>430</y>
       <width>141</width>
       <height>61</height>
      </rect>
     </property>
     <property name="text">
      <string>Stop Acquisition</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="AutoExpTime">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>230</y>
+      <width>131</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Auto Exp. Time</string>
     </property>
    </widget>
   </widget>
@@ -460,7 +468,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>868</width>
+     <width>930</width>
      <height>26</height>
     </rect>
    </property>
