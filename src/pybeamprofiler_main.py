@@ -51,24 +51,20 @@ class Thread_FLIR(QtCore.QThread):
 
             # setting Auto exposure time mode
             if self.Auto_ExpTimeCond and np.max(FrameNP) > 240:
-                while np.max(FrameNP) > 240:
-                    self.ExpTime_us = self.ExpTime_us - 100
-                    self.cam.ExposureTime.SetValue(self.ExpTime_us)
-                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
-                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
-                    time.sleep(0.01)
-                    if self.ExpTime_us < 100:
-                        break
+
+                self.ExpTime_us = self.ExpTime_us - 100
+                self.cam.ExposureTime.SetValue(self.ExpTime_us)
+                image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                time.sleep(0.01)
 
             elif np.max(FrameNP) < 120 and self.Auto_ExpTimeCond:
-                while np.max(FrameNP) < 120:
-                    self.ExpTime_us = self.ExpTime_us + 100
-                    self.cam.ExposureTime.SetValue(self.ExpTime_us)
-                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
-                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
-                    time.sleep(0.01)
-                    if self.ExpTime_us > 10000:
-                        break
+
+                self.ExpTime_us = self.ExpTime_us + 50
+                self.cam.ExposureTime.SetValue(self.ExpTime_us)
+                image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                time.sleep(0.01)
 
             time.sleep(1 / self.frame_rate)
             self.changePixmap_FLIR.emit(FrameNP, i) # send the frame and the current frame number to the GUI
@@ -164,6 +160,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.SavedFileNumber = 0
         self.RemainingFrames = None
         self.CurrentFrame = 0
+        self.StartingTime = 0
 
 
         self.ui = Ui_MainWindow()
@@ -455,6 +452,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
         self.std2[self.CurrentFrame] = abs(popt2[2])
+        self.FrameTime[self.CurrentFrame] = time.time() - self.StartingTime
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
         self.Plot_Gauss.plot(x_col, sum_col, clear=True)
@@ -465,11 +463,10 @@ class PyBeamProfilerGUI(QMainWindow):
                                                self.RemainingFrames == int(self.nr_of_frames.text()) -
                                                int(self.FramesPerFile_text.text()) * self.SavedFileNumber):
 
-
             if (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) and \
                     (int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text())):
                 np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
-                           [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+                           [self.FrameTime ,self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
                 self.SavedFileNumber = self.SavedFileNumber + 1
                 self.RemainingFrames = self.RemainingFrames - int(self.FramesPerFile_text.text())
                 self.X_Max_Pos = np.zeros(
@@ -483,9 +480,10 @@ class PyBeamProfilerGUI(QMainWindow):
                     self.RemainingFrames == int(self.nr_of_frames.text()) - \
                     int(self.FramesPerFile_text.text()) * self.SavedFileNumber:
                 np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
-                           [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
-            elif self.CurrentFrame == int(self.nr_of_frames.text()):
-                np.savetxt(self.DataFileName, [self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+            elif self.CurrentFrame == int(self.nr_of_frames.text()) - 1:
+                np.savetxt(self.DataFileName,
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
 
     def StartAcquisition(self):
         self.stop_acquisition.setEnabled(True)
@@ -498,7 +496,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_Plot_Gauss.setCentralWidget(self.Plot_Gauss)
         self.window_Plot_Gauss.show()
         self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
-
+        self.StartingTime = time.time()
         if self.StreamType.currentText() == "FLIR Cam":
             self.th = Thread_FLIR(self)  # calling the thread of the camera
             self.th.changePixmap_FLIR.connect(self.ShowFrame)
@@ -516,6 +514,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+                self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
             else:
                 self.X_Max_Pos = np.zeros(
                     int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
@@ -524,6 +523,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.pos2 = np.zeros(int(self.nr_of_frames.text()))
                 self.std2 = np.zeros(int(self.nr_of_frames.text()))
                 self.FWHM = np.zeros(int(self.nr_of_frames.text()))
+                self.FrameTime = np.zeros(int(self.nr_of_frames.text()))
             self.th.start()
 
         elif self.StreamType.currentText() == "Data Stream":
