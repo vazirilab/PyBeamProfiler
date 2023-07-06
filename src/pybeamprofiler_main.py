@@ -479,9 +479,11 @@ class PyBeamProfilerGUI(QMainWindow):
             elif (self.RemainingFrames > 0) and (self.RemainingFrames < int(self.FramesPerFile_text.text())) and \
                     self.RemainingFrames == int(self.nr_of_frames.text()) - \
                     int(self.FramesPerFile_text.text()) * self.SavedFileNumber:
+                self.stop_acquisition.setEnabled(False)
                 np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
                            [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
             elif self.CurrentFrame == int(self.nr_of_frames.text()) - 1:
+                self.stop_acquisition.setEnabled(False)
                 np.savetxt(self.DataFileName,
                            [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
 
