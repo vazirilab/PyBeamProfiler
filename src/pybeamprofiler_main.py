@@ -139,6 +139,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.start_acquisition.clicked.connect(self.StartAcquisition)
         self.ExpTimeInfo.clicked.connect(self.exp_time_info)
         self.FrameRateInfo.clicked.connect(self.frame_rate_info)
+        self.StreamType_info.clicked.connect(self.stream_type_info)
         self.stop_acquisition.clicked.connect(self.StopAcquisition)
         self.actionOpen.triggered.connect(self.OpenFile)
         self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
@@ -147,7 +148,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.nr_of_frames.setText('1000')
         self.pixel_size.setText('0.0069')
         self.ExpTime_text.setText('3000')
-        self.FrameRate_text.setText('50')
+        self.FrameRate_text.setText('30')
         self.FramesPerFile_text.setText('1000')
         self.cam_serial.textChanged.connect(self.CheckForInt_cam_serial)
         self.nr_of_frames.textChanged.connect(self.CheckForInt_nr_of_frames)
@@ -191,32 +192,33 @@ class PyBeamProfilerGUI(QMainWindow):
         self.stop_acquisition.setEnabled(False)
 
     def CheckForInt_cam_serial(self, text):
-        if not text.isdigit():
+        if not text.isdigit() and np.size(text) == 0:
+            print(text)
             self.printed_info.setText('     Please Make sure all of the parameters are digits')
             self.cam_serial.setText('20270803')
 
     def CheckForInt_nr_of_frames(self, text):
-        if not text.isdigit():
+        if not text.isdigit() and np.size(text) == 0:
             self.printed_info.setText('     Please Make sure all of the parameters are digits')
             self.nr_of_frames.setText('1000')
 
     def CheckForInt_pixel_size(self, text):
-        if not text.isdigit():
+        if not text.isdigit() and np.size(text) == 0:
             self.printed_info.setText('     Please Make sure all of the parameters are digits')
             self.pixel_size.setText('0.0069')
 
     def CheckForInt_ExpTime_text(self, text):
-        if not text.isdigit():
+        if not text.isdigit() and np.size(text) == 0:
             self.printed_info.setText('     Please Make sure all of the parameters are digits')
             self.ExpTime_text.setText('7000')
 
     def CheckForInt_FrameRate_text(self, text):
-        if not text.isdigit():
+        if not text.isdigit() and np.size(text) == 0:
             self.printed_info.setText('     Please Make sure all of the parameters are digits')
             self.FrameRate_text.setText('50')
 
     def CheckForInt_FramesPerFile_text(self, text):
-        if not text.isdigit():
+        if not text.isdigit() and np.size(text) == 0:
             self.printed_info.setText('     Please Make sure all of the parameters are digits')
             self.FramesPerFile_text.setText('1000')
 
@@ -230,8 +232,8 @@ class PyBeamProfilerGUI(QMainWindow):
                self.DataFileName = self.DataFileName + '.csv'
         else:
             self.FramesPerFile_text.setEnabled(False)
-        self.printed_info.setText('     Please select the name of the csv file for the data. If the number of frames '
-                                  'is more than 10000, Every 10000 of the data will be saved in a different file ')
+        self.printed_info.setText('     Please select the name of the csv file for the data.'
+                                  ' Select the number of the data that will be saved in each file ')
 
     def PlotStdchange(self):
         self.StdPlot = pg.PlotWidget()
@@ -269,7 +271,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame])
         self.X_Plot.setLabel(axis='left', text='Position/mm')
         self.X_Plot.setLabel(axis='bottom', text='Frame/a.u.')
-        self.window_plot_x= QMainWindow()
+        self.window_plot_x = QMainWindow()
         self.window_plot_x.setCentralWidget(self.X_Plot)
         self.window_plot_x.show()
 
@@ -354,9 +356,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
 
     def cam_serial_info(self):
-        self.printed_info.setText('     Please enter the serial of the FLIR camera you are using. In case you do not '
-                                  'enter anything or a correct serial number, the program will select the first '
-                                  'camera on the index.')
+        self.printed_info.setText('     Please enter the serial of the FLIR camera you are using.')
 
     def nr_of_frames_info(self):
         self.printed_info.setText('     Please enter the number of frames of the recording.')
@@ -371,6 +371,10 @@ class PyBeamProfilerGUI(QMainWindow):
                                   f' from the frame. The user can upload images to the GUI or stream a video from a FLIR'
                                   f' camera.')
 
+    def stream_type_info(self):
+        self.printed_info.setText(f'   Please select Type of the data streamed, either a life stream from a FLIR cam, '
+                                  f'or images from previous recording')
+
     def PrintAboutInfo(self):
         self.printed_info.setText(f'  Name: BeamProfiler \n'
                                   f'  Version: 1.0 \n'
@@ -380,7 +384,7 @@ class PyBeamProfilerGUI(QMainWindow):
                                   f'  New York, USA \n')
 
     def frame_rate_info(self):
-        self.printed_info.setText('     Please enter the desired frame rate (Max frame rate is 55 per second)')
+        self.printed_info.setText('     Please enter the desired frame rate (Max frame rate is 33 per second)')
 
     def pixel_size_info(self):
         self.printed_info.setText('     Please enter the pixel size of the camera you are using in mm.')
