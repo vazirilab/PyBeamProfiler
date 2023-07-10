@@ -224,6 +224,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def Saving_Option(self):
         if self.SavingOption.isChecked():
+            self.SavingLongAxis.setEnabled(True)
             self.DataFileName = QFileDialog.getSaveFileName(self, 'Save File', 'D:', "CSV Files (*.csv )")
             self.DataFileName = self.DataFileName[0]
             self.FramesPerFile_text.setEnabled(True)
@@ -232,6 +233,7 @@ class PyBeamProfilerGUI(QMainWindow):
                self.DataFileName = self.DataFileName + '.csv'
         else:
             self.FramesPerFile_text.setEnabled(False)
+            self.SavingLongAxis.setEnabled(False)
         self.printed_info.setText('     Please select the name of the csv file for the data.'
                                   ' Select the number of the data that will be saved in each file ')
 
@@ -427,6 +429,9 @@ class PyBeamProfilerGUI(QMainWindow):
         P_axis = np.where(d_from_center == np.amax(d_from_center))
         P_axis = yx_coords[P_axis[0]]
 
+
+
+
         m = (P_axis[0][0] - Y_Center) / (P_axis[0][1] - X_Center)  # the slope of the axis
 
         # centering and croping the image
@@ -443,6 +448,8 @@ class PyBeamProfilerGUI(QMainWindow):
 
         x_col = np.linspace(0, FramePIL.height - 1, num=FramePIL.height) * float(self.pixel_size.text())  # dim in mm
         x_rows = np.linspace(0, FramePIL.width - 1, num=FramePIL.width) * float(self.pixel_size.text())  # dim in mm
+        sum_col = (sum_col - np.min(sum_col)) / (np.max(sum_col) - np.min(sum_col))
+
         # curve fitting
         popt1, pcov1 = sp.optimize.curve_fit(self.gauss, x_rows, sum_rows)
 
@@ -455,6 +462,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.FWHM[self.CurrentFrame] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
         self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
+        self.LongAxisPlot[self.CurrentFrame, :] = sum_col
         self.std2[self.CurrentFrame] = abs(popt2[2])
         self.FrameTime[self.CurrentFrame] = time.time() - self.StartingTime
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
@@ -470,7 +478,11 @@ class PyBeamProfilerGUI(QMainWindow):
             if (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) and \
                     (int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text())):
                 np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
-                           [self.FrameTime ,self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+                           [self.FrameTime ,self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM],
+                           delimiter=",")
+                if self.SavingLongAxis.isChecked:
+                    np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + 'Long axis plot' +
+                               str(self.SavedFileNumber) + '.csv', self.LongAxisPlot, delimiter=",")
                 self.SavedFileNumber = self.SavedFileNumber + 1
                 self.RemainingFrames = self.RemainingFrames - int(self.FramesPerFile_text.text())
                 self.X_Max_Pos = np.zeros(
@@ -480,16 +492,26 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+                self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
             elif (self.RemainingFrames > 0) and (self.RemainingFrames < int(self.FramesPerFile_text.text())) and \
                     self.RemainingFrames == int(self.nr_of_frames.text()) - \
                     int(self.FramesPerFile_text.text()) * self.SavedFileNumber:
                 self.stop_acquisition.setEnabled(False)
                 np.savetxt(self.DataFileName[0: len(self.DataFileName)-4] + str(self.SavedFileNumber) + '.csv',
-                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM],
+                           delimiter=",")
+
+                if self.SavingLongAxis.isChecked:
+                    np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + 'Long axis plot' +
+                               str(self.SavedFileNumber) + '.csv', self.LongAxisPlot, delimiter=",")
             elif self.CurrentFrame == int(self.nr_of_frames.text()) - 1:
                 self.stop_acquisition.setEnabled(False)
                 np.savetxt(self.DataFileName,
-                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM], delimiter=",")
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos, self.std2, self.FWHM],
+                           delimiter=",")
+                if self.SavingLongAxis.isChecked:
+                    np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + 'Long axis plot'+
+                               str(self.SavedFileNumber) + '.csv', self.LongAxisPlot, delimiter=",")
 
     def StartAcquisition(self):
         self.stop_acquisition.setEnabled(True)
@@ -521,6 +543,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
                 self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
+                self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
             else:
                 self.X_Max_Pos = np.zeros(
                     int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
@@ -530,6 +553,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.std2 = np.zeros(int(self.nr_of_frames.text()))
                 self.FWHM = np.zeros(int(self.nr_of_frames.text()))
                 self.FrameTime = np.zeros(int(self.nr_of_frames.text()))
+                self.LongAxisPlot = np.zeros((int(self.nr_of_frames.text()), 380))
             self.th.start()
 
         elif self.StreamType.currentText() == "Data Stream":
@@ -543,18 +567,23 @@ class PyBeamProfilerGUI(QMainWindow):
             self.th.file_names = self.th.file_names[0]
             self.FileStreamNr = len(self.th.file_names)
             self.nr_of_frames.setText(str(len(self.th.file_names)))
+
             if self.SavingOption.isChecked() and int(self.FramesPerFile_text.text()) < self.FileStreamNr:
                 self.X_Max_Pos = np.zeros(int(self.FramesPerFile_text.text())) # array to follow the X-position of the beam center
                 self.Y_Max_Pos = np.zeros(int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
                 self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
                 self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+                self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
+                self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
             else:
                   self.X_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the X-position of the beam center
                   self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
                   self.pos2 = np.zeros(self.FileStreamNr)
                   self.std2 = np.zeros(self.FileStreamNr)
                   self.FWHM = np.zeros(self.FileStreamNr)
+                  self.LongAxisPlot = np.zeros((self.FileStreamNr, 380))
+                  self.FrameTime = np.zeros(self.FileStreamNr)
             self.th.start()
         self.RemainingFrames = int(self.nr_of_frames.text())
 
