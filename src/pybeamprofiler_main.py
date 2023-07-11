@@ -163,7 +163,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.CurrentFrame = 0
         self.StartingTime = 0
 
-
+        # Stream View Window
         self.ui = Ui_MainWindow()
         self.window1 = QMainWindow()
         self.ui.setupUi(self.window1)
@@ -171,10 +171,34 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
         self.ui.FWHM_Plot.clicked.connect(self.PlotFWHMchange)
         self.ui.Std_LA_Plot.clicked.connect(self.PlotStdchange)
-
+        # Offline View Window
         self.ui_offline = Ui_Ofline_Viewer()
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
+        # Variables
+        self.X_Max_Pos = None  # array to follow the X-position of the beam center
+        self.Y_Max_Pos = None  # array to follow the Y-position of the beam center
+        self.pos2 = None
+        self.std2 = None
+        self.FWHM = None
+        self.LongAxisPlot = None
+        self.FrameTime = None
+        self.allfiles = None
+        self.Nr_allfiles = None
+        self.X_Max_Pos_offline = None  # array to follow the X-position of the beam center
+        self.Y_Max_Pos_offline = None  # array to follow the Y-position of the beam center
+        self.Circ_offline = None
+        self.Y_Plot_offline = None
+        self.X_Plot_offline = None
+        self.DataFileName = None
+        self.StdPlot = None
+        self.window_plot_Std = None
+        self.Y_Plot = None
+        self.window_plot_y = None
+        self.X_Plot = None
+        self.window_plot_x = None
+        self.window_plot_y_offline = None
+        self.window_plot_x_offline = None
 
     def Auto_ExpTime(self):
         if self.AutoExpTime.isChecked():
@@ -449,6 +473,28 @@ class PyBeamProfilerGUI(QMainWindow):
         x_col = np.linspace(0, FramePIL.height - 1, num=FramePIL.height) * float(self.pixel_size.text())  # dim in mm
         x_rows = np.linspace(0, FramePIL.width - 1, num=FramePIL.width) * float(self.pixel_size.text())  # dim in mm
         sum_col = (sum_col - np.min(sum_col)) / (np.max(sum_col) - np.min(sum_col))
+        cond = True  # makes sure the elipse is detected
+        while cond:
+            sum_col_05 = (np.where((sum_col >= lower_limit) & (sum_col <= upper_limit)))
+            if np.max(np.shape(sum_col_05)) > 1:
+                self.FWHM[self.CurrentFrame] = abs(
+                    x_col[sum_col_05[0][0]] - x_col[sum_col_05[0][np.max(np.shape(sum_col_05)) - 1]])
+
+                if self.FWHM[self.CurrentFrame] <= 5 * float(self.pixel_size.text()):
+                    upper_limit = upper_limit + 0.005
+                    lower_limit = lower_limit - 0.005
+                else:
+                    upper_limit = 0.505
+                    lower_limit = 0.495
+                    cond = False
+            else:
+                upper_limit = upper_limit + 0.005
+                lower_limit = lower_limit - 0.005
+            if (upper_limit > 1) or (lower_limit < 0):
+                print('Make sure camera is open')
+                cond = False
+
+
 
         # curve fitting
         popt1, pcov1 = sp.optimize.curve_fit(self.gauss, x_rows, sum_rows)
@@ -459,7 +505,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.circularity_text.setText(str( math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))))
         self.ui.std_LA_text.setText(str(abs(popt2[2])))
         self.ui.std_SA_text.setText(str(abs(popt1[2])))
-        self.FWHM[self.CurrentFrame] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
+        #self.FWHM[self.CurrentFrame] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
         self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
         self.LongAxisPlot[self.CurrentFrame, :] = sum_col
@@ -515,6 +561,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def StartAcquisition(self):
         self.stop_acquisition.setEnabled(True)
+        self.CurrentFrame = 0
         self.SavedFileNumber = 0
         self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
         self.Plot_Gauss.setTitle("Gaussian Cross Section.")
