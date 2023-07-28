@@ -42,32 +42,58 @@ class Thread_FLIR(QtCore.QThread):
         self.processor = PySpin.ImageProcessor()
         self.cam.BeginAcquisition()
         self.cam.ExposureTime.SetValue(self.ExpTime_us)
-        for i in range(self.NUM_IMG):
+        i = 0
+        while i <= (self.NUM_IMG - 1):
             if self.Stop_Loop:
                 break
 
-            image_result = self.cam.GetNextImage(1000)  # capturing a frame
+            image_result = self.cam.GetNextImage(25)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
 
-            # setting Auto exposure time mode
-            if self.Auto_ExpTimeCond and np.max(FrameNP) > 240:
+            if np.max(FrameNP) > 20:
 
-                self.ExpTime_us = self.ExpTime_us - 100
-                self.cam.ExposureTime.SetValue(self.ExpTime_us)
-                image_result = self.cam.GetNextImage(1000)  # capturing a frame
-                FrameNP = image_result.GetNDArray()  # get the result as a numpy array
-                time.sleep(0.01)
+                # setting Auto exposure time mode
+                if self.Auto_ExpTimeCond and np.max(FrameNP) > 240:
 
-            elif np.max(FrameNP) < 120 and self.Auto_ExpTimeCond:
+                    self.ExpTime_us = self.ExpTime_us - 100
+                    self.cam.ExposureTime.SetValue(self.ExpTime_us)
+                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                    time.sleep(0.01)
 
-                self.ExpTime_us = self.ExpTime_us + 50
-                self.cam.ExposureTime.SetValue(self.ExpTime_us)
-                image_result = self.cam.GetNextImage(1000)  # capturing a frame
-                FrameNP = image_result.GetNDArray()  # get the result as a numpy array
-                time.sleep(0.01)
+
+                elif np.max(FrameNP) < 120 and self.Auto_ExpTimeCond:
+
+                    self.ExpTime_us = self.ExpTime_us + 50
+                    self.cam.ExposureTime.SetValue(self.ExpTime_us)
+                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                    time.sleep(0.01)
+
+                self.changePixmap_FLIR.emit(FrameNP, i)  # send the frame and the current frame number to the GUI
+                i = i + 1
+                image_result.Release()
+            else:
+                print(f"No laser detected, Please turn on the laser. \n")
+                while True:
+                    image_result = self.cam.GetNextImage(25)  # capturing a frame
+                    FrameNP = image_result.GetNDArray()  # get the result as a numpy array
+                    time.sleep(1 / self.frame_rate)
+                    image_result.Release()
+                    if np.max(FrameNP) > 20:
+                        if i == 0:
+                            print(f"Laser detected. \n ")
+                            break
+                        else:
+                            print(f"Laser detected. \n ")
+                            i = i - 1
+                            break
+
+                    if self.Stop_Loop:
+                        break
 
             time.sleep(1 / self.frame_rate)
-            self.changePixmap_FLIR.emit(FrameNP, i) # send the frame and the current frame number to the GUI
+
         self.cam.EndAcquisition()
         self.cam.DeInit()
 
