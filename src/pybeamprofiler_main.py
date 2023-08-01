@@ -38,7 +38,18 @@ class Thread_FLIR(QtCore.QThread):
         self.version = self.system.GetLibraryVersion()  # Get current library version
         self.cam_list = self.system.GetCameras()  # Retrieve list of cameras from the system
         self.cam = self.cam_list.GetBySerial(self.serial)
+        sNodemap = self.cam.GetTLStreamNodeMap() #change the streaming mode to acquire new frames only
+        node_bufferhandling_mode = PySpin.CEnumerationPtr(sNodemap.GetNode('StreamBufferHandlingMode'))
+        node_newestonly = node_bufferhandling_mode.GetEntryByName('NewestOnly')
+        node_newestonly_mode = node_newestonly.GetValue()
+        node_bufferhandling_mode.SetIntValue(node_newestonly_mode)
+        self.nodemap_tldevice = self.cam.GetTLDeviceNodeMap()
         self.cam.Init()
+        self.nodemap = self.cam.GetNodeMap()
+        self.node_acquisition_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
+        self.node_acquisition_mode_continuous = self.node_acquisition_mode.GetEntryByName('Continuous')
+        self.acquisition_mode_continuous = self.node_acquisition_mode_continuous.GetValue()
+        self.node_acquisition_mode.SetIntValue(self.acquisition_mode_continuous)
         self.processor = PySpin.ImageProcessor()
         self.cam.BeginAcquisition()
         self.cam.ExposureTime.SetValue(self.ExpTime_us)
@@ -50,7 +61,7 @@ class Thread_FLIR(QtCore.QThread):
             image_result = self.cam.GetNextImage(25)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
 
-            if np.max(FrameNP) > 20:
+            if np.max(FrameNP) > 20:  # prevent gui from crashing when laser off
 
                 # setting Auto exposure time mode
                 if self.Auto_ExpTimeCond and np.max(FrameNP) > 240:
