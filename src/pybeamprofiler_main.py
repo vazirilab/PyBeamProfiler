@@ -195,6 +195,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.FramesPerFile_text.textChanged.connect(self.CheckForInt_FramesPerFile_text)
         self.SavingOption.stateChanged.connect(self.Saving_Option)
         self.AutoExpTime.stateChanged.connect(self.Auto_ExpTime)
+        self.PositionOnly.stateChanged.connect(self.Position_Only)
         self.SavedFileNumber = 0
         self.RemainingFrames = None
         self.CurrentFrame = 0
@@ -236,6 +237,21 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_x = None
         self.window_plot_y_offline = None
         self.window_plot_x_offline = None
+
+    def Position_Only(self):
+        if self.PositionOnly.isChecked():
+            self.ui.FWHM_Plot.setEnabled(False)
+            self.ui.Std_LA_Plot.setEnabled(False)
+            self.ui.std_LA_text.setEnabled(False)
+            self.ui.std_SA_text.setEnabled(False)
+            self.ui.circularity_text.setEnabled(False)
+        elif self.CurrentFrame > 0:
+            self.ui.FWHM_Plot.setEnabled(True)
+            self.ui.Std_LA_Plot.setEnabled(True)
+            self.ui.std_LA_text.setEnabled(True)
+            self.ui.std_SA_text.setEnabled(True)
+            self.ui.circularity_text.setEnabled(True)
+
 
     def Auto_ExpTime(self):
         if self.AutoExpTime.isChecked():
@@ -463,7 +479,6 @@ class PyBeamProfilerGUI(QMainWindow):
     def ShowFrame(self, FrameNP, i):
         FramePIL = PIL.Image.fromarray(FrameNP)  # get the result as a PIL image
 
-        self.ui.std_LA_text.setText(str(np.max(FrameNP)))
         self.ui.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
         FrameNP = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
         # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
@@ -489,9 +504,6 @@ class PyBeamProfilerGUI(QMainWindow):
         d_from_center = (yx_coords[:, 1] - X_Center) ** 2 + (yx_coords[:, 0] - Y_Center) ** 2
         P_axis = np.where(d_from_center == np.amax(d_from_center))
         P_axis = yx_coords[P_axis[0]]
-
-
-
 
         m = (P_axis[0][0] - Y_Center) / (P_axis[0][1] - X_Center)  # the slope of the axis
 
@@ -596,6 +608,70 @@ class PyBeamProfilerGUI(QMainWindow):
                     np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + 'Long axis plot'+
                                str(self.SavedFileNumber) + '.csv', self.LongAxisPlot, delimiter=",")
 
+    def ShowFrame_PositionOnly(self, FrameNP, i):
+
+
+
+        self.ui.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
+        FrameNP = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
+        # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
+        upper_limit = 0.505
+        lower_limit = 0.495
+        cond = True  # makes sure the elipse is detected
+        while cond:
+            yx_coords = np.column_stack(np.where((FrameNP >= lower_limit) & (FrameNP <= upper_limit)))
+            if np.max(np.shape(yx_coords)) > 2:
+                upper_limit = 0.505
+                lower_limit = 0.495
+                cond = False
+            else:
+                upper_limit = upper_limit + 0.005
+                lower_limit = lower_limit - 0.005
+            if (upper_limit > 1) or (lower_limit < 0):
+                print('Make sure camera is open')
+                cond = False
+        self.CurrentFrame = i - self.SavedFileNumber * int(self.FramesPerFile_text.text())
+        Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
+        X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
+        self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
+        self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
+        self.FrameTime[self.CurrentFrame] = time.time() - self.StartingTime
+        self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
+        self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
+        if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
+                                              (self.CurrentFrame == self.FileStreamNr - 1) or
+                                              (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) or
+                                              self.RemainingFrames == int(self.nr_of_frames.text()) -
+                                              int(self.FramesPerFile_text.text()) * self.SavedFileNumber):
+
+            if (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) and \
+                    (int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text())):
+                np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + str(self.SavedFileNumber) + '.csv',
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos],
+                           delimiter=",")
+
+                self.SavedFileNumber = self.SavedFileNumber + 1
+                self.RemainingFrames = self.RemainingFrames - int(self.FramesPerFile_text.text())
+                self.X_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                self.Y_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+
+            elif (self.RemainingFrames > 0) and (self.RemainingFrames < int(self.FramesPerFile_text.text())) and \
+                    self.RemainingFrames == int(self.nr_of_frames.text()) - \
+                    int(self.FramesPerFile_text.text()) * self.SavedFileNumber:
+                self.stop_acquisition.setEnabled(False)
+                np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + str(self.SavedFileNumber) + '.csv',
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos],
+                           delimiter=",")
+
+
+            elif self.CurrentFrame == int(self.nr_of_frames.text()) - 1:
+                self.stop_acquisition.setEnabled(False)
+                np.savetxt(self.DataFileName,
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos],
+                           delimiter=",")
+
     def StartAcquisition(self):
         self.stop_acquisition.setEnabled(True)
         self.CurrentFrame = 0
@@ -611,7 +687,10 @@ class PyBeamProfilerGUI(QMainWindow):
         self.StartingTime = time.time()
         if self.StreamType.currentText() == "FLIR Cam":
             self.th = Thread_FLIR(self)  # calling the thread of the camera
-            self.th.changePixmap_FLIR.connect(self.ShowFrame)
+            if self.PositionOnly.isChecked():
+                self.th.changePixmap_FLIR.connect(self.ShowFrame_PositionOnly)
+            else:
+                self.th.changePixmap_FLIR.connect(self.ShowFrame)
             self.th.NUM_IMG = int(self.nr_of_frames.text())
             self.th.serial = (self.cam_serial.text())
             self.th.ExpTime_us = float(self.ExpTime_text.text())
@@ -619,30 +698,47 @@ class PyBeamProfilerGUI(QMainWindow):
             self.th.Auto_ExpTimeCond = self.AutoExpTime.isChecked()
             self.FileStreamNr = int(self.nr_of_frames.text())
             if int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text()) and self.SavingOption.isChecked():
-                self.X_Max_Pos = np.zeros(
-                    int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
-                self.Y_Max_Pos = np.zeros(
-                    int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
-                self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
-                self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
-                self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
-                self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
-                self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
+                if self.PositionOnly.isChecked():
+                    self.X_Max_Pos = np.zeros(
+                       int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(
+                       int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                    self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
+                else:
+                    self.X_Max_Pos = np.zeros(
+                        int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(
+                        int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                    self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
             else:
-                self.X_Max_Pos = np.zeros(
-                    int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
-                self.Y_Max_Pos = np.zeros(
-                    int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
-                self.pos2 = np.zeros(int(self.nr_of_frames.text()))
-                self.std2 = np.zeros(int(self.nr_of_frames.text()))
-                self.FWHM = np.zeros(int(self.nr_of_frames.text()))
-                self.FrameTime = np.zeros(int(self.nr_of_frames.text()))
-                self.LongAxisPlot = np.zeros((int(self.nr_of_frames.text()), 380))
+                if self.PositionOnly.isChecked():
+                    self.X_Max_Pos = np.zeros(
+                        int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(
+                        int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
+                    self.FrameTime = np.zeros(int(self.nr_of_frames.text()))
+                else:
+                    self.X_Max_Pos = np.zeros(
+                        int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(
+                        int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
+                    self.pos2 = np.zeros(int(self.nr_of_frames.text()))
+                    self.std2 = np.zeros(int(self.nr_of_frames.text()))
+                    self.FWHM = np.zeros(int(self.nr_of_frames.text()))
+                    self.FrameTime = np.zeros(int(self.nr_of_frames.text()))
+                    self.LongAxisPlot = np.zeros((int(self.nr_of_frames.text()), 380))
             self.th.start()
 
         elif self.StreamType.currentText() == "Data Stream":
             self.th = Thread_Data(self)  # calling the thread of the camera
-            self.th.changePixmap_Data.connect(self.ShowFrame)
+            if self.PositionOnly.isChecked():
+                self.th.changePixmap_Data.connect(self.ShowFrame_PositionOnly)
+            else:
+                self.th.changePixmap_Data.connect(self.ShowFrame)
             self.th.NUM_IMG = int(self.nr_of_frames.text())
             self.th.serial = (self.cam_serial.text())
             self.th.ExpTime_us = float(self.ExpTime_text.text())
@@ -653,21 +749,33 @@ class PyBeamProfilerGUI(QMainWindow):
             self.nr_of_frames.setText(str(len(self.th.file_names)))
 
             if self.SavingOption.isChecked() and int(self.FramesPerFile_text.text()) < self.FileStreamNr:
-                self.X_Max_Pos = np.zeros(int(self.FramesPerFile_text.text())) # array to follow the X-position of the beam center
-                self.Y_Max_Pos = np.zeros(int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
-                self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
-                self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
-                self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
-                self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
-                self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
+                if self.PositionOnly.isChecked():
+                    self.X_Max_Pos = np.zeros(int(self.FramesPerFile_text.text())) # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                    self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
+                else:
+                    self.X_Max_Pos = np.zeros(
+                        int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(
+                        int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+                    self.pos2 = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.std2 = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.FWHM = np.zeros(int(self.FramesPerFile_text.text()))
+                    self.LongAxisPlot = np.zeros((int(self.FramesPerFile_text.text()), 380))
+                    self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
             else:
-                  self.X_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the X-position of the beam center
-                  self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
-                  self.pos2 = np.zeros(self.FileStreamNr)
-                  self.std2 = np.zeros(self.FileStreamNr)
-                  self.FWHM = np.zeros(self.FileStreamNr)
-                  self.LongAxisPlot = np.zeros((self.FileStreamNr, 380))
-                  self.FrameTime = np.zeros(self.FileStreamNr)
+                if self.PositionOnly.isChecked():
+                    self.X_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
+                    self.FrameTime = np.zeros(self.FileStreamNr)
+                else:
+                    self.X_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the X-position of the beam center
+                    self.Y_Max_Pos = np.zeros(self.FileStreamNr)  # array to follow the Y-position of the beam center
+                    self.pos2 = np.zeros(self.FileStreamNr)
+                    self.std2 = np.zeros(self.FileStreamNr)
+                    self.FWHM = np.zeros(self.FileStreamNr)
+                    self.LongAxisPlot = np.zeros((self.FileStreamNr, 380))
+                    self.FrameTime = np.zeros(self.FileStreamNr)
             self.th.start()
         self.RemainingFrames = int(self.nr_of_frames.text())
 
