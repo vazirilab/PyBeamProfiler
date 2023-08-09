@@ -21,7 +21,7 @@ import pyqtgraph as pg
 
 # A thread for the camera. It emits frames and the number of the current frame
 class Thread_FLIR(QtCore.QThread):
-    changePixmap_FLIR = QtCore.pyqtSignal(np.ndarray, int) # a signal to renew each frame
+    changePixmap_FLIR = QtCore.pyqtSignal(np.ndarray, int, int) # a signal to renew each frame
     # those values are initial numbers that will be redefined in the GUI
     NUM_IMG = 100000
     serial = '20270803'  # seriel of the flir cam
@@ -53,14 +53,16 @@ class Thread_FLIR(QtCore.QThread):
         self.processor = PySpin.ImageProcessor()
         self.cam.BeginAcquisition()
         self.cam.ExposureTime.SetValue(self.ExpTime_us)
+        self.cam.AcquisitionFrameRateEnable.SetValue(True)
+        self.cam.AcquisitionFrameRate.SetValue(self.frame_rate)
         i = 0
         while i <= (self.NUM_IMG - 1):
             if self.Stop_Loop:
                 break
 
-            image_result = self.cam.GetNextImage(25)  # capturing a frame
+            image_result = self.cam.GetNextImage(10000)  # capturing a frame
             FrameNP = image_result.GetNDArray()  # get the result as a numpy array
-
+            TimeStamp = image_result.GetTimeStamp()
             if np.max(FrameNP) > 20:  # prevent gui from crashing when laser off
 
                 # setting Auto exposure time mode
@@ -68,7 +70,7 @@ class Thread_FLIR(QtCore.QThread):
 
                     self.ExpTime_us = self.ExpTime_us - 100
                     self.cam.ExposureTime.SetValue(self.ExpTime_us)
-                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                    image_result = self.cam.GetNextImage(10000)  # capturing a frame
                     FrameNP = image_result.GetNDArray()  # get the result as a numpy array
                     time.sleep(0.01)
 
@@ -77,19 +79,19 @@ class Thread_FLIR(QtCore.QThread):
 
                     self.ExpTime_us = self.ExpTime_us + 50
                     self.cam.ExposureTime.SetValue(self.ExpTime_us)
-                    image_result = self.cam.GetNextImage(1000)  # capturing a frame
+                    image_result = self.cam.GetNextImage(10000)  # capturing a frame
                     FrameNP = image_result.GetNDArray()  # get the result as a numpy array
                     time.sleep(0.01)
 
-                self.changePixmap_FLIR.emit(FrameNP, i)  # send the frame and the current frame number to the GUI
+                self.changePixmap_FLIR.emit(FrameNP, i, TimeStamp)  # send the frame and the current frame number to the GUI
                 i = i + 1
                 image_result.Release()
             else:
                 print(f"No laser detected, Please turn on the laser. \n")
                 while True:
-                    image_result = self.cam.GetNextImage(25)  # capturing a frame
+                    image_result = self.cam.GetNextImage(10000)  # capturing a frame
                     FrameNP = image_result.GetNDArray()  # get the result as a numpy array
-                    time.sleep(1 / self.frame_rate)
+                    time.sleep(0.01)
                     image_result.Release()
                     if np.max(FrameNP) > 20:
                         if i == 0:
@@ -103,7 +105,7 @@ class Thread_FLIR(QtCore.QThread):
                     if self.Stop_Loop:
                         break
 
-            time.sleep(1 / self.frame_rate)
+            time.sleep(0.01)
 
         self.cam.EndAcquisition()
         self.cam.DeInit()
@@ -475,8 +477,8 @@ class PyBeamProfilerGUI(QMainWindow):
 
         self.window1.show()
 
-    @QtCore.pyqtSlot(np.ndarray, int)
-    def ShowFrame(self, FrameNP, i):
+    @QtCore.pyqtSlot(np.ndarray, int, int)
+    def ShowFrame(self, FrameNP, i, TimeStamp):
         FramePIL = PIL.Image.fromarray(FrameNP)  # get the result as a PIL image
 
         self.ui.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
@@ -559,7 +561,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
         self.LongAxisPlot[self.CurrentFrame, :] = sum_col
         self.std2[self.CurrentFrame] = abs(popt2[2])
-        self.FrameTime[self.CurrentFrame] = time.time() - self.StartingTime
+        self.FrameTime[self.CurrentFrame] = TimeStamp
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
         self.Plot_Gauss.plot(x_col, sum_col, clear=True)
@@ -608,7 +610,7 @@ class PyBeamProfilerGUI(QMainWindow):
                     np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + 'Long axis plot'+
                                str(self.SavedFileNumber) + '.csv', self.LongAxisPlot, delimiter=",")
 
-    def ShowFrame_PositionOnly(self, FrameNP, i):
+    def ShowFrame_PositionOnly(self, FrameNP, i, TimeStamp):
 
 
 
@@ -635,7 +637,7 @@ class PyBeamProfilerGUI(QMainWindow):
         X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
         self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
-        self.FrameTime[self.CurrentFrame] = time.time() - self.StartingTime
+        self.FrameTime[self.CurrentFrame] = TimeStamp
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
