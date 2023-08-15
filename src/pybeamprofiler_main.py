@@ -228,6 +228,16 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_Arduino.setupUi(self.window3)
         self.ui_Arduino.calibrate_motors.clicked.connect(self.Caliberate_Motors)
         self.ui_Arduino.start_acquisition_ard.clicked.connect(self.StartAcquisition_ard)
+        self.ui_Arduino.ENA_Pin_Y.setText('4')
+        self.ui_Arduino.DIR_Pin_Y.setText('3')
+        self.ui_Arduino.PUL_Pin_Y.setText('2')
+        self.ui_Arduino.OPTO_Pin_Y.setText('5')
+        self.ui_Arduino.ENA_Pin_X.setText('9')
+        self.ui_Arduino.DIR_Pin_X.setText('11')
+        self.ui_Arduino.PUL_Pin_X.setText('12')
+        self.ui_Arduino.OPTO_Pin_X.setText('10')
+        self.ui_Arduino.ARD_Port.setText('COM5')
+        self.ui_Arduino.StepsPerRev.setText('400')
 
         # Variables
         self.X_Max_Pos = None  # array to follow the X-position of the beam center
@@ -381,6 +391,7 @@ class PyBeamProfilerGUI(QMainWindow):
         else:
             if self.ard_board == 0:
                 self.ard_board = pyfirmata.Arduino(self.ui_Arduino.ARD_Port.text())
+
             self.ENAY = int(self.ui_Arduino.ENA_Pin_Y.text())
             self.ENAX = int(self.ui_Arduino.ENA_Pin_X.text())
             self.DIRY = int(self.ui_Arduino.DIR_Pin_Y.text())
@@ -389,6 +400,15 @@ class PyBeamProfilerGUI(QMainWindow):
             self.PULY = int(self.ui_Arduino.PUL_Pin_Y.text())
             self.OPTOX = int(self.ui_Arduino.OPTO_Pin_X.text())
             self.OPTOY = int(self.ui_Arduino.OPTO_Pin_Y.text())
+            self.ard_board.digital[self.OPTOY].write(1)  # Enable the stepper driver.
+            time.sleep(0.0005)
+            self.ard_board.digital[self.ENAY].write(1)  # Enable the stepper driver.
+            time.sleep(0.0005)
+            self.ard_board.digital[self.OPTOX].write(1)  # Enable the stepper driver.
+            time.sleep(0.0005)
+            self.ard_board.digital[self.ENAX].write(1)  # Enable the stepper driver.
+            time.sleep(0.0005)
+
 
             if self.CurrentFrame < 5:
                 self.meanX5_1 = np.mean(self.X_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
@@ -409,57 +429,26 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.ui_Arduino.left_button.setEnabled(True)
                 self.ui_Arduino.right_button.setEnabled(True)
 
+    def closeEvent(self, event):
+        if not (type(self.ard_board) == int):
+            self.ard_board.exit()
+        event.accept()
+
     def keyPressEvent(self, event):
 
         key = event.key()
         if not (self.ard_board == 0):
             if key == QtCore.Qt.Key_S:
-                if event.isAutoRepeat():
-                    if self.k == 1:
-                        self.cond_motor_y = True
-                        self.rotate_stepper_continuous_Y(0, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
-                        self.k = 0
-                else:
-                    self.rotate_stepper( 1, 0, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
-                    self.k = 1
-            if key == QtCore.Qt.Key_W:
-                if event.isAutoRepeat():
-                    if self.k == 1:
-                        self.cond_motor_y = True
-                        self.rotate_stepper_continuous_Y(0, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
-                        self.k = 0
-                else:
-                    self.rotate_stepper( 1, 1, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
-                    self.k = 1
-            if key == QtCore.Qt.Key_D:
-                if event.isAutoRepeat():
-                    if self.k == 1:
-                        self.cond_motor_x = True
-                        self.rotate_stepper_continuous_X(0, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
-                        self.k = 0
-                else:
-                    self.rotate_stepper( 1, 0, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
-                    self.k = 1
-            if key == QtCore.Qt.Key_A:
-                if event.isAutoRepeat():
-                    if self.k == 1:
-                        self.cond_motor_x = True
-                        self.rotate_stepper_continuous_X(1, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
-                        self.k = 0
-                else:
-                    self.rotate_stepper( 1, 0, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
-                    self.k = 1
+                self.rotate_one_step(0, self.ard_board, self.DIRY, self.PULY)
 
-    def keyReleaseEvent(self, event):
-        key = event.key()
-        if key == QtCore.Qt.Key_S and not event.isAutoRepeat():
-            self.cond_motor_y = False
-        if key == QtCore.Qt.Key_W and not event.isAutoRepeat():
-            self.cond_motor_y = False
-        if key == QtCore.Qt.Key_D and not event.isAutoRepeat():
-            self.cond_motor_x = False
-        if key == QtCore.Qt.Key_A and not event.isAutoRepeat():
-            self.cond_motor_x = False
+            if key == QtCore.Qt.Key_W:
+                self.rotate_one_step(1, self.ard_board, self.DIRY, self.PULY)
+
+            if key == QtCore.Qt.Key_D:
+                self.rotate_one_step(0, self.ard_board, self.DIRX, self.PULX)
+
+            if key == QtCore.Qt.Key_A:
+                self.rotate_one_step(1, self.ard_board, self.DIRX, self.PULX)
 
     def Open_Ard_Window(self):
         # Find the Arduino port(s).
@@ -471,7 +460,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.window3.show()
         else:
             self.printed_info.setText("No Arduinos detected.")
-            self.window3.show()############
+
 
     def find_arduino_ports(self):
         arduino_ports = [
@@ -1042,51 +1031,14 @@ class PyBeamProfilerGUI(QMainWindow):
             board.digital[PUL_PIN].write(0)
             time.sleep(0.000075)
 
-        board.digital[ENA_PIN].write(0)  # Disable the stepper driver.
-        board.digital[OPTO_Pin].write(0)  # Disable the stepper driver.
 
-    def rotate_stepper_continuous_X(self, direction, board, ENA_PIN, DIR_PIN, PUL_PIN, OPTO_Pin):
-        board.digital[OPTO_Pin].write(1)  # Enable the stepper driver.
-        time.sleep(0.0005)
-        board.digital[ENA_PIN].write(1)  # Enable the stepper driver.
-        time.sleep(0.0005)
-
-        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
+    def rotate_one_step(self, direction, board, DIR_PIN, PUL_PIN):
         board.digital[DIR_PIN].write(direction)
         time.sleep(0.0005)
-
-        while True:
-            if self.cond_motor_x:
-                break
-            board.digital[PUL_PIN].write(1)  # Send a step signal.
-            time.sleep(0.000075)
-            board.digital[PUL_PIN].write(0)
-            time.sleep(0.000075)
-
-
-        board.digital[ENA_PIN].write(0)  # Disable the stepper driver.
-        board.digital[OPTO_Pin].write(0)  # Disable the stepper driver.
-
-    def rotate_stepper_continuous_Y(self, direction, board, ENA_PIN, DIR_PIN, PUL_PIN, OPTO_Pin):
-        board.digital[OPTO_Pin].write(1)  # Enable the stepper driver.
-        time.sleep(0.0005)
-        board.digital[ENA_PIN].write(1)  # Enable the stepper driver.
-        time.sleep(0.0005)
-
-        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
-        board.digital[DIR_PIN].write(direction)
-        time.sleep(0.0005)
-
-        while True:
-            if self.cond_motor_y:
-                break
-            board.digital[PUL_PIN].write(1)  # Send a step signal.
-            time.sleep(0.000075)
-            board.digital[PUL_PIN].write(0)
-            time.sleep(0.000075)
-
-        board.digital[ENA_PIN].write(0)  # Disable the stepper driver.
-        board.digital[OPTO_Pin].write(0)  # Disable the stepper driver.
+        board.digital[PUL_PIN].write(1)  # Send a step signal.
+        time.sleep(0.000075)
+        board.digital[PUL_PIN].write(0)
+        time.sleep(0.00075)
 
     def gray2qimage(self, gray):
         '''
@@ -1128,4 +1080,5 @@ class PyBeamProfilerGUI(QMainWindow):
 # if __name__ == '__main__':
 app = QApplication([])
 window = PyBeamProfilerGUI()
+
 app.exec_()
