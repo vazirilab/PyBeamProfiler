@@ -50,7 +50,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Cam. Index</string>
+     <string>Cam. Serial</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="cam_serial">
@@ -506,6 +506,7 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen"/>
+    <addaction name="actionPosition_Control"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -531,6 +532,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionPosition_Control">
+   <property name="text">
+    <string>Position Control</string>
    </property>
   </action>
  </widget>

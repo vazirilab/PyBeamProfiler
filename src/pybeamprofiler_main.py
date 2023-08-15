@@ -4,7 +4,7 @@ from PyQt5 import uic
 from PyQt5 import QtGui, QtCore
 import skimage
 import numpy as np
-import matplotlib.pyplot as plt
+import sys
 import glob
 import os
 import PIL
@@ -13,11 +13,13 @@ import math
 import time
 import scipy as sp
 import PySpin
-import cv2
 from View_page import Ui_MainWindow
 from Offline_viewer import Ui_Ofline_Viewer
+from Arduino_Control import Ui_Arduino_Control
 import pyqtgraph as pg
-
+import pyfirmata
+import serial
+import serial.tools.list_ports
 
 # A thread for the camera. It emits frames and the number of the current frame
 class Thread_FLIR(QtCore.QThread):
@@ -183,6 +185,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.actionOpen.triggered.connect(self.OpenFile)
         self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
         self.actionAbout.triggered.connect(self.PrintAboutInfo)
+        self.actionPosition_Control.triggered.connect(self.Open_Ard_Window)
         self.cam_serial.setText('20270803')
         self.nr_of_frames.setText('1000')
         self.pixel_size.setText('0.0069')
@@ -211,10 +214,21 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
         self.ui.FWHM_Plot.clicked.connect(self.PlotFWHMchange)
         self.ui.Std_LA_Plot.clicked.connect(self.PlotStdchange)
+
+
         # Offline View Window
         self.ui_offline = Ui_Ofline_Viewer()
         self.window2 = QMainWindow()
         self.ui_offline.setupUi(self.window2)
+
+
+        # Arduino control
+        self.ui_Arduino = Ui_Arduino_Control()
+        self.window3 = QMainWindow()
+        self.ui_Arduino.setupUi(self.window3)
+        self.ui_Arduino.calibrate_motors.clicked.connect(self.Caliberate_Motors)
+        self.ui_Arduino.start_acquisition_ard.clicked.connect(self.StartAcquisition_ard)
+
         # Variables
         self.X_Max_Pos = None  # array to follow the X-position of the beam center
         self.Y_Max_Pos = None  # array to follow the Y-position of the beam center
@@ -239,6 +253,233 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_x = None
         self.window_plot_y_offline = None
         self.window_plot_x_offline = None
+        self.thorlabs_AnglePerRev = 8e-3  # rad
+        self.th = Thread_FLIR(self)
+        self.caliberate_movment_values = False
+        self.ard_board = 0
+
+    def Follow_Position(self, FrameNP, i, TimeStamp):
+        self.ui_Arduino.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
+        FrameNP = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
+        # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
+        upper_limit = 0.505
+        lower_limit = 0.495
+        cond = True  # makes sure the elipse is detected
+        while cond:
+            yx_coords = np.column_stack(np.where((FrameNP >= lower_limit) & (FrameNP <= upper_limit)))
+            if np.max(np.shape(yx_coords)) > 2:
+                upper_limit = 0.505
+                lower_limit = 0.495
+                cond = False
+            else:
+                upper_limit = upper_limit + 0.005
+                lower_limit = lower_limit - 0.005
+            if (upper_limit > 1) or (lower_limit < 0):
+                print('Make sure camera is open')
+                cond = False
+        self.CurrentFrame = i - self.SavedFileNumber * int(self.FramesPerFile_text.text())
+        Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
+        X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
+        self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
+        self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
+
+
+
+
+
+        self.FrameTime[self.CurrentFrame] = TimeStamp
+        self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
+        self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
+        if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
+                                              (self.CurrentFrame == self.FileStreamNr - 1) or
+                                              (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) or
+                                              self.RemainingFrames == int(self.nr_of_frames.text()) -
+                                              int(self.FramesPerFile_text.text()) * self.SavedFileNumber):
+
+            if (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) and \
+                    (int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text())):
+                np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + str(self.SavedFileNumber) + '.csv',
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos],
+                           delimiter=",")
+
+                self.SavedFileNumber = self.SavedFileNumber + 1
+                self.RemainingFrames = self.RemainingFrames - int(self.FramesPerFile_text.text())
+                self.X_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+                self.Y_Max_Pos = np.zeros(
+                    int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+
+            elif (self.RemainingFrames > 0) and (self.RemainingFrames < int(self.FramesPerFile_text.text())) and \
+                    self.RemainingFrames == int(self.nr_of_frames.text()) - \
+                    int(self.FramesPerFile_text.text()) * self.SavedFileNumber:
+                self.stop_acquisition.setEnabled(False)
+                np.savetxt(self.DataFileName[0: len(self.DataFileName) - 4] + str(self.SavedFileNumber) + '.csv',
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos],
+                           delimiter=",")
+
+
+            elif self.CurrentFrame == int(self.nr_of_frames.text()) - 1:
+                self.stop_acquisition.setEnabled(False)
+                np.savetxt(self.DataFileName,
+                           [self.FrameTime, self.X_Max_Pos, self.Y_Max_Pos],
+                           delimiter=",")
+
+    def StartAcquisition_ard(self):
+        self.stop_acquisition.setEnabled(True)
+        self.CurrentFrame = 0
+        self.SavedFileNumber = 0
+        self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
+        self.StartingTime = time.time()
+        self.th.terminate()
+        self.th = Thread_FLIR(self)  # calling the thread of the camera
+        self.th.changePixmap_FLIR.connect(self.Follow_Position)
+
+        self.th.NUM_IMG = int(self.nr_of_frames.text())
+        self.th.serial = (self.cam_serial.text())
+        self.th.ExpTime_us = float(self.ExpTime_text.text())
+        self.th.frame_rate = float(self.FrameRate_text.text())
+        self.th.Auto_ExpTimeCond = self.AutoExpTime.isChecked()
+        self.FileStreamNr = int(self.nr_of_frames.text())
+        if int(self.nr_of_frames.text()) > int(self.FramesPerFile_text.text()) and self.SavingOption.isChecked():
+
+            self.X_Max_Pos = np.zeros(
+                 int(self.FramesPerFile_text.text()))  # array to follow the X-position of the beam center
+            self.Y_Max_Pos = np.zeros(
+                 int(self.FramesPerFile_text.text()))  # array to follow the Y-position of the beam center
+            self.FrameTime = np.zeros(int(self.FramesPerFile_text.text()))
+
+        else:
+            self.X_Max_Pos = np.zeros(
+                int(self.nr_of_frames.text()))  # array to follow the X-position of the beam center
+            self.Y_Max_Pos = np.zeros(
+                int(self.nr_of_frames.text()))  # array to follow the Y-position of the beam center
+            self.FrameTime = np.zeros(int(self.nr_of_frames.text()))
+        self.ui_Arduino.calibrate_motors.setEnabled(True)
+        self.th.start()
+
+    def Caliberate_Motors(self):
+        if len(self.ui_Arduino.ENA_Pin_Y.text()) < 1:
+            self.printed_info.setText('add a valid ENA Pin')
+        elif len(self.ui_Arduino.ENA_Pin_X.text()) < 1:
+            self.printed_info.setText('add a valid ENA Pin')
+        elif len(self.ui_Arduino.PUL_Pin_X.text()) < 1:
+            self.printed_info.setText('add a valid PUL Pin')
+        elif len(self.ui_Arduino.PUL_Pin_Y.text()) < 1:
+            self.printed_info.setText('add a valid PUL Pin')
+        elif len(self.ui_Arduino.DIR_Pin_X.text()) < 1:
+            self.printed_info.setText('add a valid DIR Pin')
+        elif len(self.ui_Arduino.DIR_Pin_Y.text()) < 1:
+            self.printed_info.setText('add a valid DIR Pin')
+        elif len(self.ui_Arduino.OPTO_Pin_Y.text()) < 1:
+            self.printed_info.setText('add a valid OPTO Pin')
+        elif len(self.ui_Arduino.OPTO_Pin_X.text()) < 1:
+            self.printed_info.setText('add a valid OPTO Pin')
+        elif len(self.ui_Arduino.ARD_Port.text()) < 1:
+            self.printed_info.setText('add a valid Arduino port ')
+        elif len(self.ui_Arduino.StepsPerRev.text()) < 1:
+            self.printed_info.setText('add a valid Steps / rev. number')
+        else:
+            if self.ard_board == 0:
+                self.ard_board = pyfirmata.Arduino(self.ui_Arduino.ARD_Port.text())
+            self.ENAY = int(self.ui_Arduino.ENA_Pin_Y.text())
+            self.ENAX = int(self.ui_Arduino.ENA_Pin_X.text())
+            self.DIRY = int(self.ui_Arduino.DIR_Pin_Y.text())
+            self.DIRX = int(self.ui_Arduino.DIR_Pin_X.text())
+            self.PULX = int(self.ui_Arduino.PUL_Pin_X.text())
+            self.PULY = int(self.ui_Arduino.PUL_Pin_Y.text())
+            self.OPTOX = int(self.ui_Arduino.OPTO_Pin_X.text())
+            self.OPTOY = int(self.ui_Arduino.OPTO_Pin_Y.text())
+
+            if self.CurrentFrame < 5:
+                self.meanX5_1 = np.mean(self.X_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
+
+                self.rotate_stepper(int(int(self.ui_Arduino.StepsPerRev.text()) / 10), 0, self.ard_board, self.ENAX, self.DIRX,
+                                    self.PULX, self.OPTOX)
+                self.meanX5_2 = np.mean(self.X_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
+                self.rotate_stepper(int(int(self.ui_Arduino.StepsPerRev.text()) / 10), 1, self.ard_board, self.ENAX, self.DIRX,
+                                    self.PULX, self.OPTOX)
+                self.meanY5_1 = np.mean(self.Y_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
+                self.rotate_stepper(int(int(self.ui_Arduino.StepsPerRev.text()) / 10), 0, self.ard_board, self.ENAY, self.DIRY,
+                                    self.PULY, self.OPTOY)
+                self.meanY5_2 = np.mean(self.Y_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
+                self.rotate_stepper(int(int(self.ui_Arduino.StepsPerRev.text()) / 10), 1, self.ard_board, self.ENAY, self.DIRY,
+                                    self.PULY, self.OPTOY)
+                self.ui_Arduino.up_button.setEnabled(True)
+                self.ui_Arduino.down_button.setEnabled(True)
+                self.ui_Arduino.left_button.setEnabled(True)
+                self.ui_Arduino.right_button.setEnabled(True)
+
+    def keyPressEvent(self, event):
+
+        key = event.key()
+        if not (self.ard_board == 0):
+            if key == QtCore.Qt.Key_S:
+                if event.isAutoRepeat():
+                    if self.k == 1:
+                        self.cond_motor_y = True
+                        self.rotate_stepper_continuous_Y(0, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
+                        self.k = 0
+                else:
+                    self.rotate_stepper( 1, 0, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
+                    self.k = 1
+            if key == QtCore.Qt.Key_W:
+                if event.isAutoRepeat():
+                    if self.k == 1:
+                        self.cond_motor_y = True
+                        self.rotate_stepper_continuous_Y(0, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
+                        self.k = 0
+                else:
+                    self.rotate_stepper( 1, 1, self.ard_board, self.ENAY, self.DIRY, self.PULY, self.OPTOY)
+                    self.k = 1
+            if key == QtCore.Qt.Key_D:
+                if event.isAutoRepeat():
+                    if self.k == 1:
+                        self.cond_motor_x = True
+                        self.rotate_stepper_continuous_X(0, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
+                        self.k = 0
+                else:
+                    self.rotate_stepper( 1, 0, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
+                    self.k = 1
+            if key == QtCore.Qt.Key_A:
+                if event.isAutoRepeat():
+                    if self.k == 1:
+                        self.cond_motor_x = True
+                        self.rotate_stepper_continuous_X(1, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
+                        self.k = 0
+                else:
+                    self.rotate_stepper( 1, 0, self.ard_board, self.ENAX, self.DIRX, self.PULX, self.OPTOX)
+                    self.k = 1
+
+    def keyReleaseEvent(self, event):
+        key = event.key()
+        if key == QtCore.Qt.Key_S and not event.isAutoRepeat():
+            self.cond_motor_y = False
+        if key == QtCore.Qt.Key_W and not event.isAutoRepeat():
+            self.cond_motor_y = False
+        if key == QtCore.Qt.Key_D and not event.isAutoRepeat():
+            self.cond_motor_x = False
+        if key == QtCore.Qt.Key_A and not event.isAutoRepeat():
+            self.cond_motor_x = False
+
+    def Open_Ard_Window(self):
+        # Find the Arduino port(s).
+        arduino_ports = self.find_arduino_ports()
+
+        if len(arduino_ports) > 0:
+            for port, description in arduino_ports:
+                self.printed_info.setText(f"Arduino detected: {description} on port {port}\n")
+                self.window3.show()
+        else:
+            self.printed_info.setText("No Arduinos detected.")
+            self.window3.show()############
+
+    def find_arduino_ports(self):
+        arduino_ports = [
+            (p.device, p.description)
+            for p in serial.tools.list_ports.comports()
+            if 'Arduino' in p.description  # Adjust this condition based on your Arduino model's description.
+        ]
+        return arduino_ports
 
     def Position_Only(self):
         if self.PositionOnly.isChecked():
@@ -691,6 +932,7 @@ class PyBeamProfilerGUI(QMainWindow):
             self.th = Thread_FLIR(self)  # calling the thread of the camera
             if self.PositionOnly.isChecked():
                 self.th.changePixmap_FLIR.connect(self.ShowFrame_PositionOnly)
+                self.window_Plot_Gauss.close()
             else:
                 self.th.changePixmap_FLIR.connect(self.ShowFrame)
             self.th.NUM_IMG = int(self.nr_of_frames.text())
@@ -783,6 +1025,68 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def gauss(self, x, A, mu, sigma, off):
         return A * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + off
+
+    def rotate_stepper(self, steps, direction, board, ENA_PIN, DIR_PIN, PUL_PIN, OPTO_Pin):
+        board.digital[OPTO_Pin].write(1)  # Enable the stepper driver.
+        time.sleep(0.0005)
+        board.digital[ENA_PIN].write(1)  # Enable the stepper driver.
+        time.sleep(0.0005)
+
+        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
+        board.digital[DIR_PIN].write(direction)
+        time.sleep(0.0005)
+
+        for _ in range(steps):
+            board.digital[PUL_PIN].write(1)  # Send a step signal.
+            time.sleep(0.000075)
+            board.digital[PUL_PIN].write(0)
+            time.sleep(0.000075)
+
+        board.digital[ENA_PIN].write(0)  # Disable the stepper driver.
+        board.digital[OPTO_Pin].write(0)  # Disable the stepper driver.
+
+    def rotate_stepper_continuous_X(self, direction, board, ENA_PIN, DIR_PIN, PUL_PIN, OPTO_Pin):
+        board.digital[OPTO_Pin].write(1)  # Enable the stepper driver.
+        time.sleep(0.0005)
+        board.digital[ENA_PIN].write(1)  # Enable the stepper driver.
+        time.sleep(0.0005)
+
+        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
+        board.digital[DIR_PIN].write(direction)
+        time.sleep(0.0005)
+
+        while True:
+            if self.cond_motor_x:
+                break
+            board.digital[PUL_PIN].write(1)  # Send a step signal.
+            time.sleep(0.000075)
+            board.digital[PUL_PIN].write(0)
+            time.sleep(0.000075)
+
+
+        board.digital[ENA_PIN].write(0)  # Disable the stepper driver.
+        board.digital[OPTO_Pin].write(0)  # Disable the stepper driver.
+
+    def rotate_stepper_continuous_Y(self, direction, board, ENA_PIN, DIR_PIN, PUL_PIN, OPTO_Pin):
+        board.digital[OPTO_Pin].write(1)  # Enable the stepper driver.
+        time.sleep(0.0005)
+        board.digital[ENA_PIN].write(1)  # Enable the stepper driver.
+        time.sleep(0.0005)
+
+        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
+        board.digital[DIR_PIN].write(direction)
+        time.sleep(0.0005)
+
+        while True:
+            if self.cond_motor_y:
+                break
+            board.digital[PUL_PIN].write(1)  # Send a step signal.
+            time.sleep(0.000075)
+            board.digital[PUL_PIN].write(0)
+            time.sleep(0.000075)
+
+        board.digital[ENA_PIN].write(0)  # Disable the stepper driver.
+        board.digital[OPTO_Pin].write(0)  # Disable the stepper driver.
 
     def gray2qimage(self, gray):
         '''
