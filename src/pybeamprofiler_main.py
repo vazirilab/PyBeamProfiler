@@ -1,3 +1,4 @@
+import PyQt5.QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 # from PyQt5.QtGui import QPixmap, QImage
@@ -228,6 +229,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_Arduino.setupUi(self.window3)
         self.ui_Arduino.calibrate_motors.clicked.connect(self.Caliberate_Motors)
         self.ui_Arduino.start_acquisition_ard.clicked.connect(self.StartAcquisition_ard)
+        self.ui_Arduino.blink_ard.clicked.connect(self.blinkArd)
         self.ui_Arduino.ENA_Pin_Y.setText('4')
         self.ui_Arduino.DIR_Pin_Y.setText('3')
         self.ui_Arduino.PUL_Pin_Y.setText('2')
@@ -267,6 +269,23 @@ class PyBeamProfilerGUI(QMainWindow):
         self.th = Thread_FLIR(self)
         self.caliberate_movment_values = False
         self.ard_board = 0
+
+    def blinkArd(self):
+        if len(self.ui_Arduino.ARD_Port.text()) < 1:
+            self.printed_info.setText('add a valid Arduino port ')
+        else:
+            if self.ard_board == 0:
+                self.ard_board = pyfirmata.Arduino(self.ui_Arduino.ARD_Port.text())
+            self.printed_info.setText(f'The Arduino LED connected to port {self.ui_Arduino.ARD_Port} is blinking')
+            for i in range(15):
+                self.ard_board.digital[13].write(1)  # Send a step signal.
+                time.sleep(0.5)
+                self.ard_board.digital[13].write(0)  # Send a step signal.
+                time.sleep(0.5)
+            self.ard_board.exit()
+            self.ard_board = 0
+
+
 
     def Follow_Position(self, FrameNP, i, TimeStamp):
         self.ui_Arduino.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
@@ -432,6 +451,10 @@ class PyBeamProfilerGUI(QMainWindow):
     def closeEvent(self, event):
         if not (type(self.ard_board) == int):
             self.ard_board.exit()
+        self.window3.close()
+        self.window2.close()
+        self.window1.close()
+        PyQt5.QtWidgets.QApplication.closeAllWindows()
         event.accept()
 
     def keyPressEvent(self, event):
