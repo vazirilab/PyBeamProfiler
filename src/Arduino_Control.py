@@ -117,6 +117,9 @@ class Ui_Arduino_Control(object):
         self.blink_ard = QtWidgets.QPushButton(self.centralwidget)
         self.blink_ard.setGeometry(QtCore.QRect(390, 590, 201, 28))
         self.blink_ard.setObjectName("blink_ard")
+        self.label_11 = QtWidgets.QLabel(self.centralwidget)
+        self.label_11.setGeometry(QtCore.QRect(610, 690, 56, 16))
+        self.label_11.setObjectName("label_11")
         Arduino_Control.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(Arduino_Control)
         self.statusbar.setObjectName("statusbar")
@@ -146,6 +149,7 @@ class Ui_Arduino_Control(object):
         self.label_10.setText(_translate("Arduino_Control", "Steps / rev."))
         self.start_acquisition_ard.setText(_translate("Arduino_Control", "Start Acquisition"))
         self.blink_ard.setText(_translate("Arduino_Control", "Blink Arduino"))
+        self.label_11.setText(_translate("Arduino_Control", "mm"))
 
 
 if __name__ == "__main__":
