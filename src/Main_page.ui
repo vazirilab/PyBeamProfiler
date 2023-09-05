@@ -195,8 +195,8 @@
    <widget class="QPushButton" name="Open_Viewer">
     <property name="geometry">
      <rect>
-      <x>70</x>
-      <y>570</y>
+      <x>10</x>
+      <y>560</y>
       <width>141</width>
       <height>61</height>
      </rect>
@@ -490,6 +490,19 @@
      <string>Position Only</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="ButtonPosition_control">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>560</y>
+      <width>141</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Position Control</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
@@ -506,7 +519,6 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen"/>
-    <addaction name="actionPosition_Control"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">

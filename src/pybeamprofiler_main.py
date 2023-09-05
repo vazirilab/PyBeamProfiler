@@ -313,7 +313,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.actionOpen.triggered.connect(self.OpenFile)
         self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
         self.actionAbout.triggered.connect(self.PrintAboutInfo)
-        self.actionPosition_Control.triggered.connect(self.Open_Ard_Window)
+        self.ButtonPosition_control.clicked.connect(self.Open_Ard_Window)
         self.cam_serial.setText('20270803')
         self.nr_of_frames.setText('100000')
         self.pixel_size.setText('0.0069')
@@ -1097,7 +1097,9 @@ class PyBeamProfilerGUI(QMainWindow):
                                   f'\n A'
                                   f' Gaussian-fit is used to get the Std of the beam and the FWHM is calculated directly'
                                   f' from the frame. The user can upload images to the GUI or stream a video from a FLIR'
-                                  f' camera.')
+                                  f' camera.\n'
+                                  f' If the Position Only check box is selected the center of the beam will be '
+                                  f'calculated using the Center of mass methode.\n')
 
     def stream_type_info(self):
         self.printed_info.setText(f'   Please select Type of the data streamed, either a life stream from a FLIR cam, '
@@ -1262,26 +1264,13 @@ class PyBeamProfilerGUI(QMainWindow):
 
 
         self.ui.cam_view.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
-        FrameNP = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
+
         # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
-        upper_limit = 0.505
-        lower_limit = 0.495
-        cond = True  # makes sure the elipse is detected
-        while cond:
-            yx_coords = np.column_stack(np.where((FrameNP >= lower_limit) & (FrameNP <= upper_limit)))
-            if np.max(np.shape(yx_coords)) > 2:
-                upper_limit = 0.505
-                lower_limit = 0.495
-                cond = False
-            else:
-                upper_limit = upper_limit + 0.005
-                lower_limit = lower_limit - 0.005
-            if (upper_limit > 1) or (lower_limit < 0):
-                print('Make sure camera is open')
-                cond = False
+
         self.CurrentFrame = i - self.SavedFileNumber * int(self.FramesPerFile_text.text())
-        Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
-        X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
+        self.newCenterMethod = sp.ndimage.center_of_mass(FrameNP)
+        X_Center = self.newCenterMethod[1]
+        Y_Center = self.newCenterMethod[0]
         self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text())
         self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text())
         self.FrameTime[self.CurrentFrame] = TimeStamp
@@ -1436,30 +1425,7 @@ class PyBeamProfilerGUI(QMainWindow):
     def gauss(self, x, A, mu, sigma, off):
         return A * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + off
 
-    def rotate_stepper(self, steps, direction, board, ENA_PIN, DIR_PIN, PUL_PIN, OPTO_Pin):
-        board.digital[OPTO_Pin].write(1)  # Enable the stepper driver.
-        time.sleep(0.0005)
-        board.digital[ENA_PIN].write(1)  # Enable the stepper driver.
-        time.sleep(0.0005)
 
-        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
-        board.digital[DIR_PIN].write(direction)
-        time.sleep(0.0005)
-
-        for _ in range(steps):
-            board.digital[PUL_PIN].write(1)  # Send a step signal.
-            time.sleep(0.000075)
-            board.digital[PUL_PIN].write(0)
-            time.sleep(0.000075)
-
-
-    def rotate_one_step(self, direction, board, DIR_PIN, PUL_PIN):
-        board.digital[DIR_PIN].write(direction)
-        time.sleep(0.0005)
-        board.digital[PUL_PIN].write(1)  # Send a step signal.
-        time.sleep(0.000075)
-        board.digital[PUL_PIN].write(0)
-        time.sleep(0.00075)
 
     def gray2qimage(self, gray):
         '''
