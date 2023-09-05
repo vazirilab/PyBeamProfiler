@@ -114,9 +114,9 @@ class Ui_Arduino_Control(object):
         self.start_acquisition_ard = QtWidgets.QPushButton(self.centralwidget)
         self.start_acquisition_ard.setGeometry(QtCore.QRect(390, 550, 111, 41))
         self.start_acquisition_ard.setObjectName("start_acquisition_ard")
-        self.blink_ard = QtWidgets.QPushButton(self.centralwidget)
-        self.blink_ard.setGeometry(QtCore.QRect(390, 590, 201, 28))
-        self.blink_ard.setObjectName("blink_ard")
+        self.Open_tunning = QtWidgets.QPushButton(self.centralwidget)
+        self.Open_tunning.setGeometry(QtCore.QRect(390, 590, 201, 28))
+        self.Open_tunning.setObjectName("Open_tunning")
         self.label_11 = QtWidgets.QLabel(self.centralwidget)
         self.label_11.setGeometry(QtCore.QRect(610, 690, 56, 16))
         self.label_11.setObjectName("label_11")
@@ -148,15 +148,5 @@ class Ui_Arduino_Control(object):
         self.label_9.setText(_translate("Arduino_Control", "Ard. Port"))
         self.label_10.setText(_translate("Arduino_Control", "Steps / rev."))
         self.start_acquisition_ard.setText(_translate("Arduino_Control", "Start Acquisition"))
-        self.blink_ard.setText(_translate("Arduino_Control", "Blink Arduino"))
+        self.Open_tunning.setText(_translate("Arduino_Control", "Tunning PID"))
         self.label_11.setText(_translate("Arduino_Control", "mm"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    Arduino_Control = QtWidgets.QMainWindow()
-    ui = Ui_Arduino_Control()
-    ui.setupUi(Arduino_Control)
-    Arduino_Control.show()
-    sys.exit(app.exec_())

@@ -17,6 +17,7 @@ import PySpin
 from View_page import Ui_MainWindow
 from Offline_viewer import Ui_Ofline_Viewer
 from Arduino_Control import Ui_Arduino_Control
+from Tunning import Ui_Tunning_parameters
 import pyqtgraph as pg
 import pyfirmata
 import serial
@@ -155,15 +156,16 @@ class Thread_motorX(QtCore.QThread):
     def run(self):
         self.is_running = True
         # Set the direction (HIGH for clockwise, LOW for counterclockwise).
-        self.board.digital[self.DIR_PIN].write(self.direction)
-        time.sleep(0.0005)
+        command = f"X,{self.direction},{(self.steps)}\n"
+        try:
+            self.board.write(command.encode())
 
-        for _ in range(self.steps):
-            
-            self.board.digital[self.PUL_PIN].write(1)  # Send a step signal.
-            time.sleep(0.000075)
-            self.board.digital[self.PUL_PIN].write(0)
-            time.sleep(0.000075)
+        except:
+            pass
+
+        
+
+        
         self.is_running = False
 
 
@@ -173,6 +175,7 @@ class Thread_motorY(QtCore.QThread):
     DIR_PIN=3
     PUL_PIN=2
     steps = 40
+    directionX = 0
     is_running = False
     def __init__(self,parent=None):
         super(Thread_motorY, self).__init__(parent)
@@ -180,14 +183,17 @@ class Thread_motorY(QtCore.QThread):
     def run(self):
         self.is_running = True
         # Set the direction (HIGH for clockwise, LOW for counterclockwise).
-        self.board.digital[self.DIR_PIN].write(self.direction)
-        time.sleep(0.0005)
-        for _ in range(self.steps):
+        self.is_running = True
+        # Set the direction (HIGH for clockwise, LOW for counterclockwise).
+        command = f"Y,{self.direction},{(self.steps)}\n"
+        try:
+            self.board.write(command.encode())
             
-            self.board.digital[self.PUL_PIN].write(1)  # Send a step signal.
-            time.sleep(0.000075)
-            self.board.digital[self.PUL_PIN].write(0)
-            time.sleep(0.000075)
+        except:
+            pass
+        
+
+        
         self.is_running = False
 
 class Thread_FLIR_Ard(QtCore.QThread):
@@ -254,26 +260,12 @@ class Thread_FLIR_Ard(QtCore.QThread):
                     FrameNP = image_result.GetNDArray()  # get the result as a numpy array
                     time.sleep(0.01)
 
-                FrameNP_norm = (FrameNP - np.min(FrameNP)) / (np.max(FrameNP) - np.min(FrameNP))  # normalize the matrix
                 # the elliptic shape of the beam is extracted on the form of points on a certain intensity of the gaussian beam
-                upper_limit = 0.505
-                lower_limit = 0.495
+                
                 cond = True  # makes sure the elipse is detected
-                while cond:
-                    yx_coords = np.column_stack(np.where((FrameNP_norm >= lower_limit) & (FrameNP_norm <= upper_limit)))
-                    if np.max(np.shape(yx_coords)) > 2:
-                        upper_limit = 0.505
-                        lower_limit = 0.495
-                        cond = False
-                        self.Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
-                        self.X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
-                    else:
-                        upper_limit = upper_limit + 0.005
-                        lower_limit = lower_limit - 0.005
-                    if (upper_limit > 1) or (lower_limit < 0):
-                        print('Make sure camera is open')
-                        cond = False
-
+                self.newCenterMethod = sp.ndimage.center_of_mass(FrameNP)
+                self.X_Center = self.newCenterMethod[1]
+                self.Y_Center = self.newCenterMethod[0]
                     
                 self.changePixmap_FLIR.emit(FrameNP, i, TimeStamp, self.X_Center,self.Y_Center)  # send the frame and the current frame number to the GUI
                 i = i + 1
@@ -325,7 +317,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.cam_serial.setText('20270803')
         self.nr_of_frames.setText('100000')
         self.pixel_size.setText('0.0069')
-        self.ExpTime_text.setText('540')
+        self.ExpTime_text.setText('12000')
         self.FrameRate_text.setText('70')
         self.FramesPerFile_text.setText('1000')
         self.cam_serial.textChanged.connect(self.CheckForInt_cam_serial)
@@ -351,6 +343,19 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.FWHM_Plot.clicked.connect(self.PlotFWHMchange)
         self.ui.Std_LA_Plot.clicked.connect(self.PlotStdchange)
 
+        # Tunning Window
+        self.ui_tunning = Ui_Tunning_parameters()
+        self.window_tunning = QMainWindow()
+        self.ui_tunning.setupUi(self.window_tunning)
+        self.ui_tunning.Apply_par.clicked.connect(self.Change_PID)
+        self.ui_tunning.Kp.setText('80')
+        self.ui_tunning.KI.setText('0.001')
+        self.ui_tunning.KD.setText('0.004')
+        self.Kp = 80
+        self.KI = 0.001
+        self.KD = 0.004
+
+
 
         # Offline View Window
         self.ui_offline = Ui_Ofline_Viewer()
@@ -364,22 +369,22 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_Arduino.setupUi(self.window3)
         self.ui_Arduino.calibrate_motors.clicked.connect(self.Caliberate_Motors)
         self.ui_Arduino.start_acquisition_ard.clicked.connect(self.StartAcquisition_ard)
-        self.ui_Arduino.blink_ard.clicked.connect(self.blinkArd)
+        self.ui_Arduino.Open_tunning.clicked.connect(self.Open_tunning)
         self.ui_Arduino.up_button.clicked.connect(self.go_up_steps_button)
         self.ui_Arduino.right_button.clicked.connect(self.go_right_steps_button)
         self.ui_Arduino.left_button.clicked.connect(self.go_left_steps_button)
         self.ui_Arduino.down_button.clicked.connect(self.go_down_steps_button)
 
-        self.ui_Arduino.ENA_Pin_Y.setText('4')
-        self.ui_Arduino.DIR_Pin_Y.setText('3')
-        self.ui_Arduino.PUL_Pin_Y.setText('2')
-        self.ui_Arduino.OPTO_Pin_Y.setText('5')
-        self.ui_Arduino.ENA_Pin_X.setText('9')
-        self.ui_Arduino.DIR_Pin_X.setText('11')
-        self.ui_Arduino.PUL_Pin_X.setText('12')
-        self.ui_Arduino.OPTO_Pin_X.setText('10')
+        self.ui_Arduino.ENA_Pin_Y.setText('10')
+        self.ui_Arduino.DIR_Pin_Y.setText('9')
+        self.ui_Arduino.PUL_Pin_Y.setText('8')
+        self.ui_Arduino.OPTO_Pin_Y.setText('11')
+        self.ui_Arduino.ENA_Pin_X.setText('4')
+        self.ui_Arduino.DIR_Pin_X.setText('3')
+        self.ui_Arduino.PUL_Pin_X.setText('2')
+        self.ui_Arduino.OPTO_Pin_X.setText('5')
         self.ui_Arduino.ARD_Port.setText('COM21')
-        self.ui_Arduino.StepsPerRev.setText('1600')
+        self.ui_Arduino.StepsPerRev.setText('3200')
         self.ui_Arduino.up_button.setShortcut("Ctrl+W")
         self.ui_Arduino.down_button.setShortcut("Ctrl+S")
         self.ui_Arduino.left_button.setShortcut("Ctrl+A")
@@ -421,97 +426,132 @@ class PyBeamProfilerGUI(QMainWindow):
         self.down_DIR = 1
         self.Caliberate_cond = False
 
-    def blinkArd(self):
-        if len(self.ui_Arduino.ARD_Port.text()) < 1:
-            self.printed_info.setText('add a valid Arduino port ')
-        else:
-            if self.ard_board == 0:
-                self.ard_board = pyfirmata.Arduino(self.ui_Arduino.ARD_Port.text())
-            self.printed_info.setText(f'The Arduino LED connected to port {self.ui_Arduino.ARD_Port} is blinking')
-            for i in range(15):
-                self.ard_board.digital[13].write(1)  # Send a step signal.
-                time.sleep(0.5)
-                self.ard_board.digital[13].write(0)  # Send a step signal.
-                time.sleep(0.5)
+    def Change_PID(self):
+        self.Kp = float(self.ui_tunning.Kp.text())
+        self.KI = float(self.ui_tunning.KI.text())
+        self.KD = float(self.ui_tunning.KD.text())
+
+    def Open_tunning(self):
+        self.window_tunning.show()
+            
 
     def Follow_Position(self, FrameNP, i, TimeStamp, X_Center, Y_Center):
         self.ui_Arduino.cam_view_arduino.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
-        self.newCenterMethod = sp.ndimage.center_of_mass(FrameNP)
+        
         self.CurrentFrame = i - self.SavedFileNumber * int(self.FramesPerFile_text.text())
-        self.X_Max_Pos[self.CurrentFrame] = self.newCenterMethod[1] * float(self.pixel_size.text())# X_Center  * float(self.pixel_size.text())
-        self.Y_Max_Pos[self.CurrentFrame] = self.newCenterMethod[0] * float(self.pixel_size.text())
+        freq1 = 0 * 2 * 3.14159265 # Hz * 2pi
+        freq2 = 0 * 2 * 3.14159265 # Hz * 2pi
+        freq3 = 5 * 2 * 3.14159265 # Hz * 2pi
+        freq4 = 0 * 2 * 3.14159265  # Hz * 2pi
+        steps_noiseX = (0.2 * math.sin(freq1 * self.CurrentFrame/ 70 ) + 0.15 * math.sin(freq2 * self.CurrentFrame / 70 ) + 0.4 * math.sin(freq3 * self.CurrentFrame / 70 ) + 0.05 * math.sin(freq4  * self.CurrentFrame/ 70 )) 
+        steps_noiseY = (0.05 * math.sin(freq1 * self.CurrentFrame / 70 ) + 0.1 * math.sin(freq2 * self.CurrentFrame / 70 ) + 0.15 * math.sin(freq3  * self.CurrentFrame/ 70 ) + 0.05 * math.sin(freq4  * self.CurrentFrame/ 70 ))  
+        
+        self.X_Max_Pos[self.CurrentFrame] = X_Center * float(self.pixel_size.text()) #+ steps_noiseX# X_Center  * float(self.pixel_size.text())
+        self.Y_Max_Pos[self.CurrentFrame] = Y_Center * float(self.pixel_size.text()) #+ steps_noiseY
         self.FrameTime[self.CurrentFrame] = TimeStamp
 
 
        # self.newcentermethod = sp.ndimage.center_of_mass(FrameNP) # * float(self.pixel_size.text())
         
-
-
-        if self.ui_Arduino.closed_loop_option.isChecked() and self.CurrentFrame > 140:
-            self.meanY5_1 = np.mean(self.Y_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
-            self.meanX5_1 = np.mean(self.X_Max_Pos[self.CurrentFrame - 5: self.CurrentFrame])
-            self.meanY5_2 = np.mean(self.Y_Max_Pos[self.CurrentFrame - 20: self.CurrentFrame] - 2)
-            self.meanX5_2 = np.mean(self.X_Max_Pos[self.CurrentFrame - 20: self.CurrentFrame] - 2.5)
-            self.meanX5_3 = ((self.X_Max_Pos[self.CurrentFrame] - 2.5) - (self.X_Max_Pos[self.CurrentFrame-1] - 2.5)) 
+        #print(X_Center * float(self.pixel_size.text()), Y_Center* float(self.pixel_size.text()))
+       
+        if self.SavedFileNumber > 0:
+            self.ui_Arduino.closed_loop_option.setChecked(False)
+        if self.ui_Arduino.closed_loop_option.isChecked() and self.CurrentFrame > 1:
+            self.meanY5_1 = np.mean(self.Y_Max_Pos[ self.CurrentFrame] - 2)
+            self.meanX5_1 = np.mean(self.X_Max_Pos[ self.CurrentFrame]  - 2.5)
+            self.meanY5_2 = np.sum(self.Y_Max_Pos[0 : self.CurrentFrame] - 2)
+            self.meanX5_2 = np.sum(self.X_Max_Pos[0 : self.CurrentFrame] - 2.5)
+            self.meanX5_3 = ((self.X_Max_Pos[self.CurrentFrame]) - (self.X_Max_Pos[self.CurrentFrame-1]))
             self.meanY5_3 = ((self.Y_Max_Pos[self.CurrentFrame] - 2) - (self.Y_Max_Pos[self.CurrentFrame-1] - 2)) 
-           # print(self.meanY5_3)
+        
+            P_X = self.Kp * self.meanX5_1
+            P_Y =  self.Kp * self.meanY5_1
+            I_X =  (self.Kp * self.KI) * ((self.meanX5_2 * ( 1 / float(self.FrameRate_text.text()) ) )) #self.ChangePosPStepX
+            I_Y =  (self.Kp * self.KI) * ((  self.meanY5_2 * ( 1 / float(self.FrameRate_text.text()) ) )) #self.ChangePosPStepX
+            D_X =   self.Kp * self.KD *(self.meanX5_3 / ((1 / float(self.FrameRate_text.text()))))
+            D_Y =  self.Kp * self.KD * ( self.meanY5_3 / ((1 / float(self.FrameRate_text.text())) ))
+            
+
+
+            #print('Dx ',(int( D_X)),' Dy',(int( D_Y)))
+            #print('Ix',(int( I_X)), ' Iy',(int( I_Y)))
+            #print('Px',(int( P_X)), ' Py',(int( P_Y)))
             #print(self.meanX5_3+1000)
-            if not (self.Motor_threadX.is_running ):
+            if not (self.Motor_threadX.is_running or abs(int(P_X + I_X + D_X )) <= 0):
                 #if self.meanX5_3 > 0.01:                    
                 #    self.go_left()
                 #elif self.meanX5_3 < -0.01:
                  #   self.go_right()
                 self.control_lateX = self.control_lateX + 1
-                if self.meanX5_1 - 2.5 > 0.029 and self.control_lateX > 5:
+                if self.meanX5_1  > 0.000001 :
                     self.control_lateX = 0
-                    if self.meanX5_1 > 0.9:
-                       self.go_left_steps(8)
-                    elif self.meanX5_1 - 2.5 > 0.6:
-                       self.go_left_steps(6)
-                    elif self.meanX5_1 > 0.3:
-                       self.go_left_steps(2)
-                    else:
-                       self.go_left()
-                elif (self.meanX5_1 - 2.5 < -0.029) and (self.control_lateX > 5):
-                    self.control_lateX = 0
-                    if self.meanX5_1 < -0.9:
-                       self.go_right_steps(8)
-                    elif self.meanX5_1 - 2.5 < -0.6:
-                       self.go_right_steps(3)
-                    elif self.meanX5_1 < -0.3:
-                       self.go_right_steps(2)
-                    else:
-                       self.go_right()
+
+                  
+                    self.go_left_steps(abs(int(P_X + I_X + D_X )))
+                elif (self.meanX5_1 < -0.000001):
+              
+                     
+                    self.go_right_steps(abs(int(P_X + I_X + D_X )))
+               
                    
          
                 
                 
-            if not (self.Motor_threadY.is_running ) :
+            if not (self.Motor_threadY.is_running or abs(int(P_Y + I_Y + D_Y )) <= 0) :
                # if self.meanY5_3 > 0.05:                    
                 #    self.go_up()
                 #elif self.meanY5_3 < -0.05:
                  #   self.go_down()
                 self.control_lateY = self.control_lateY + 1
-                if self.meanY5_1 - 2 > 0.029 and self.control_lateY > 5:
-                    self.control_lateY = 0
-                    if self.meanY5_1 - 2 > 0.9:
-                        self.go_up_steps(8)
-                    elif self.meanY5_1 - 2 > 0.6:
-                        self.go_up_steps(3)  
-                    elif self.meanY5_1 - 2 > 0.3:
-                        self.go_up_steps(2)
-                    else:
-                        self.go_up()
-                elif self.meanY5_1 - 2 < -0.029 and self.control_lateY > 5:
-                    self.control_lateY = 0
-                    if self.meanY5_1 - 2 < -0.9:
-                        self.go_down_steps(8)
-                    elif self.meanY5_1 - 2 < -0.6:
-                        self.go_down_steps(3)
-                    elif self.meanY5_1 - 2 < -0.3:
-                        self.go_down_steps(2)
-                    else:
-                        self.go_down()
+                if self.meanY5_1  > 0.000001 :
+            #        self.control_lateY = 0
+             #       if self.meanY5_1 - 2 > 0.9:
+              #          self.go_up_steps(8)
+               #     elif self.meanY5_1 - 2 > 0.6:
+                #        self.go_up_steps(3)  
+                 #   elif self.meanY5_1 - 2 > 0.3:
+                  #      self.go_up_steps(2)
+                   # else:
+                    self.go_up_steps(abs(int(P_Y + I_Y + D_Y )))
+                elif self.meanY5_1  < -0.00001 :
+                    #self.control_lateY = 0
+                   # if self.meanY5_1 - 2 < -0.9:
+                    #    self.go_down_steps(8)
+                   # elif self.meanY5_1 - 2 < -0.6:
+                  #      self.go_down_steps(3)
+                 #   elif self.meanY5_1 - 2 < -0.3:
+                #        self.go_down_steps(2)
+                #    else:
+                    self.go_down_steps(abs(int(P_Y + I_Y + D_Y)))
+               
+#        freq1 = 20 * 2 * 3.14159265 # Hz * 2pi
+#        freq2 = 15 * 2 * 3.14159265 # Hz * 2pi
+#        freq3 = 10 * 2 * 3.14159265 # Hz * 2pi
+#        freq4 = 5 * 2 * 3.14159265  # Hz * 2pi
+#        steps_noiseX = (10 * math.sin(freq1 * self.CurrentFrame/ 70 ) + 9 * math.sin(freq2 * self.CurrentFrame / 70 ) + 8 * math.sin(freq3 * self.CurrentFrame / 70 ) + 9 * math.sin(freq4  * self.CurrentFrame/ 70 )) 
+#        steps_noiseY = (10 * math.sin(freq1 * self.CurrentFrame / 70 ) + 9 * math.sin(freq2 * self.CurrentFrame / 70 ) + 8 * math.sin(freq3  * self.CurrentFrame/ 70 ) + 10 * math.sin(freq4  * self.CurrentFrame/ 70 ))  
+#        print(steps_noiseY)
+#        if not (self.Motor_threadY.is_running or self.CurrentFrame < 700 or self.CurrentFrame % 3 !=0 )  :
+#               
+#                self.control_lateY = self.control_lateY + 1
+#                if steps_noiseY  > 0.000001 :
+#           
+#                    self.go_up_steps(abs(int(steps_noiseY)))
+#                elif steps_noiseY  < -0.00001 :
+#                 
+#                
+#                    self.go_down_steps(abs(int(steps_noiseY)))
+#        if not (self.Motor_threadX.is_running or self.CurrentFrame < 700) :
+#               
+#                self.control_lateY = self.control_lateY + 1
+#                if steps_noiseX  > 0.000001 :
+#           
+#                    self.go_left_steps(abs(int(steps_noiseX)))
+#                elif steps_noiseX  < -0.00001 :
+#                 
+#                
+#                    self.go_right_steps(abs(int(steps_noiseX)))
         
         
                             
@@ -614,8 +654,7 @@ class PyBeamProfilerGUI(QMainWindow):
     def go_left(self):
         if not self.Motor_threadX.is_running:
            self.Motor_threadX = Thread_motorX(parent=None)
-           self.Motor_threadX.DIR_PIN = self.DIRX
-           self.Motor_threadX.PUL_PIN = self.PULX
+           
            self.Motor_threadX.board = self.ard_board
            self.Motor_threadX.steps = 1
            self.Motor_threadX.direction = self.left_DIR
@@ -631,6 +670,8 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def go_up_steps(self, steps=20):
         if not self.Motor_threadY.is_running:
+           self.Motor_threadY = Thread_motorY(parent=None)
+           self.Motor_threadY.board = self.ard_board
            self.Motor_threadY.steps = steps
            self.Motor_threadY.direction = self.up_DIR
 
@@ -638,6 +679,8 @@ class PyBeamProfilerGUI(QMainWindow):
     
     def go_down_steps(self, steps=50):
         if not self.Motor_threadY.is_running:
+           self.Motor_threadY = Thread_motorY(parent=None) 
+           self.Motor_threadY.board = self.ard_board
 
            self.Motor_threadY.steps = steps
            self.Motor_threadY.direction = self.down_DIR
@@ -648,8 +691,6 @@ class PyBeamProfilerGUI(QMainWindow):
         if not self.Motor_threadX.is_running:
 
             self.Motor_threadX = Thread_motorX(parent=None)
-            self.Motor_threadX.DIR_PIN = self.DIRX
-            self.Motor_threadX.PUL_PIN = self.PULX
             self.Motor_threadX.board = self.ard_board
             self.Motor_threadX.steps = steps
             self.Motor_threadX.direction = self.left_DIR
@@ -658,26 +699,25 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def go_right_steps(self, steps=20):
         if not self.Motor_threadX.is_running:
-
+           self.Motor_threadX = Thread_motorX(parent=None)
+           self.Motor_threadX.board = self.ard_board
            self.Motor_threadX.steps = steps
            self.Motor_threadX.direction = self.right_DIR
 
            self.Motor_threadX.start()
 
     def go_right_steps_button(self):
-        if not self.Motor_threadX.is_running:
+         if not self.Motor_threadX.is_running:
+            self.Motor_threadX.board = self.ard_board
+            self.Motor_threadX.steps = 10
+            self.Motor_threadX.direction = self.right_DIR
 
-           self.Motor_threadX.steps = 10
-           self.Motor_threadX.direction = self.right_DIR
-
-           self.Motor_threadX.start()
+            self.Motor_threadX.start()
 
     def go_left_steps_button(self):
         if not self.Motor_threadX.is_running:
 
-            self.Motor_threadX = Thread_motorX(parent=None)
-            self.Motor_threadX.DIR_PIN = self.DIRX
-            self.Motor_threadX.PUL_PIN = self.PULX
+           
             self.Motor_threadX.board = self.ard_board
             self.Motor_threadX.steps = 10
             self.Motor_threadX.direction = self.left_DIR
@@ -685,6 +725,7 @@ class PyBeamProfilerGUI(QMainWindow):
             self.Motor_threadX.start()
     def go_up_steps_button(self):
         if not self.Motor_threadY.is_running:
+           self.Motor_threadY.board = self.ard_board
            self.Motor_threadY.steps = 10
            self.Motor_threadY.direction = self.up_DIR
 
@@ -692,7 +733,7 @@ class PyBeamProfilerGUI(QMainWindow):
     
     def go_down_steps_button(self):
         if not self.Motor_threadY.is_running:
-
+           self.Motor_threadY.board = self.ard_board
            self.Motor_threadY.steps = 10
            self.Motor_threadY.direction = self.down_DIR
 
@@ -722,7 +763,7 @@ class PyBeamProfilerGUI(QMainWindow):
             self.printed_info.setText('add a valid Steps / rev. number')
         else:
             if self.ard_board == 0:
-                self.ard_board = pyfirmata.Arduino(self.ui_Arduino.ARD_Port.text())
+                self.ard_board = serial.Serial(port='COM21', baudrate=115200, timeout=1)
 
             self.ENAY = int(self.ui_Arduino.ENA_Pin_Y.text())
             self.ENAX = int(self.ui_Arduino.ENA_Pin_X.text())
@@ -733,24 +774,15 @@ class PyBeamProfilerGUI(QMainWindow):
             self.OPTOX = int(self.ui_Arduino.OPTO_Pin_X.text())
             self.OPTOY = int(self.ui_Arduino.OPTO_Pin_Y.text())
             self.Motor_threadX = Thread_motorX(parent=None)
-            self.Motor_threadX.DIR_PIN = self.DIRX
-            self.Motor_threadX.PUL_PIN = self.PULX
+            
             self.Motor_threadX.board = self.ard_board
-            self.Motor_threadX.steps = int(int(self.ui_Arduino.StepsPerRev.text()) / 10)
-            self.Motor_threadY = Thread_motorY(parent=None)
-            self.Motor_threadY.DIR_PIN = self.DIRY
-            self.Motor_threadY.PUL_PIN = self.PULY
-            self.Motor_threadY.board = self.ard_board
-            self.Motor_threadY.steps = int(int(self.ui_Arduino.StepsPerRev.text()) / 10)
 
-            self.ard_board.digital[self.OPTOY].write(1)  # Enable the stepper driver.
-            time.sleep(0.0005)
-            self.ard_board.digital[self.ENAY].write(1)  # Enable the stepper driver.
-            time.sleep(0.0005)
-            self.ard_board.digital[self.OPTOX].write(1)  # Enable the stepper driver.
-            time.sleep(0.0005)
-            self.ard_board.digital[self.ENAX].write(1)  # Enable the stepper driver.
-            time.sleep(0.0005)
+            self.Motor_threadY = Thread_motorY(parent=None)
+           
+            self.Motor_threadY.board = self.ard_board
+            
+
+            
             self.ui_Arduino.up_button.setEnabled(True)
             self.ui_Arduino.down_button.setEnabled(True)
             self.ui_Arduino.left_button.setEnabled(True)
@@ -778,10 +810,11 @@ class PyBeamProfilerGUI(QMainWindow):
                         self.down_DIR = 0
 
                     self.beamPath = math.sqrt(abs(self.meanY5_2 - self.meanY5_1)**2 + abs(self.meanX5_2 - self.meanX5_1)**2) 
-                    print(self.beamPath)
-
-                    self.beamPath = self.beamPath / math.sin(40 * self.thorlabs_AnglePerRev / int(self.ui_Arduino.StepsPerRev.text()))
                     
+                    self.ChangePosPStepY = abs(self.meanY5_2 - self.meanY5_1) / int(int(self.ui_Arduino.StepsPerRev.text()) / 20)
+                    self.ChangePosPStepX = abs(self.meanX5_2 - self.meanX5_1) / int(int(self.ui_Arduino.StepsPerRev.text()) / 20)
+                    self.beamPath = self.beamPath / math.sin(40 * self.thorlabs_AnglePerRev / int(self.ui_Arduino.StepsPerRev.text()))
+
                     self.ui_Arduino.Beam_path_length.setText(str(self.beamPath))
                     self.Caliberate_cond = False
                 else:
@@ -791,8 +824,9 @@ class PyBeamProfilerGUI(QMainWindow):
                     self.down_DIR = 0
                     self.left_DIR = 0
                     self.right_DIR = 1
-                    self.go_up_steps(40)
-                    self.go_right_steps(40)
+                    self.go_up_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 20))
+                    time.sleep(0.021)
+                    self.go_right_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 20))
                     self.Caliberate_cond = True
                 
                 
@@ -808,7 +842,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def closeEvent(self, event):
         if not (type(self.ard_board) == int):
-            self.ard_board.exit()
+            self.ard_board.close()
         self.window3.close()
         self.window2.close()
         self.window1.close()
@@ -948,6 +982,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_FWHM.show()
 
     def PlotYchange(self):
+        
         self.Y_Plot = pg.PlotWidget()
         self.Y_Plot.setTitle("Centroid Y-Position")
         self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame])
@@ -956,6 +991,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_y = QMainWindow()
         self.window_plot_y.setCentralWidget(self.Y_Plot)
         self.window_plot_y.show()
+       
 
     def PlotXchange(self):
         self.X_Plot = pg.PlotWidget()

@@ -385,7 +385,7 @@
      <string>Start Acquisition</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="blink_ard">
+   <widget class="QPushButton" name="Open_tunning">
     <property name="geometry">
      <rect>
       <x>390</x>
@@ -395,7 +395,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Blink Arduino</string>
+     <string>Tunning PID</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_11">
