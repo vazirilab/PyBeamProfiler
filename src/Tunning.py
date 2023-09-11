@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Tunning_parameters(object):
     def setupUi(self, Tunning_parameters):
         Tunning_parameters.setObjectName("Tunning_parameters")
-        Tunning_parameters.resize(306, 318)
+        Tunning_parameters.resize(306, 366)
         self.centralwidget = QtWidgets.QWidget(Tunning_parameters)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
@@ -53,6 +53,9 @@ class Ui_Tunning_parameters(object):
         self.Apply_par = QtWidgets.QPushButton(self.centralwidget)
         self.Apply_par.setGeometry(QtCore.QRect(80, 230, 121, 41))
         self.Apply_par.setObjectName("Apply_par")
+        self.label_5 = QtWidgets.QLabel(self.centralwidget)
+        self.label_5.setGeometry(QtCore.QRect(30, 300, 241, 31))
+        self.label_5.setObjectName("label_5")
         Tunning_parameters.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(Tunning_parameters)
         self.statusbar.setObjectName("statusbar")
@@ -63,9 +66,10 @@ class Ui_Tunning_parameters(object):
 
     def retranslateUi(self, Tunning_parameters):
         _translate = QtCore.QCoreApplication.translate
-        Tunning_parameters.setWindowTitle(_translate("Tunning_parameters", "Tunning"))
+        Tunning_parameters.setWindowTitle(_translate("Tunning_parameters", "Tuning"))
         self.label.setText(_translate("Tunning_parameters", "Closed Loop Parameters"))
         self.label_2.setText(_translate("Tunning_parameters", "Kp"))
         self.label_3.setText(_translate("Tunning_parameters", "KI"))
         self.label_4.setText(_translate("Tunning_parameters", "KD"))
         self.Apply_par.setText(_translate("Tunning_parameters", "Apply"))
+        self.label_5.setText(_translate("Tunning_parameters", "PS*:This Control loop is a parallel Loop"))

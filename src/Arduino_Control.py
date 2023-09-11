@@ -148,5 +148,5 @@ class Ui_Arduino_Control(object):
         self.label_9.setText(_translate("Arduino_Control", "Ard. Port"))
         self.label_10.setText(_translate("Arduino_Control", "Steps / rev."))
         self.start_acquisition_ard.setText(_translate("Arduino_Control", "Start Acquisition"))
-        self.Open_tunning.setText(_translate("Arduino_Control", "Tunning PID"))
+        self.Open_tunning.setText(_translate("Arduino_Control", "Configure PID"))
         self.label_11.setText(_translate("Arduino_Control", "mm"))

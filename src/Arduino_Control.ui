@@ -395,7 +395,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Tunning PID</string>
+     <string>Configure PID</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_11">
