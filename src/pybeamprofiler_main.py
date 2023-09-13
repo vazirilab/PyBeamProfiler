@@ -480,46 +480,35 @@ class PyBeamProfilerGUI(QMainWindow):
                self.meanX5_3 = 0
                self.meanY5_3 = 0 
 
-
-        
             P_X = self.Kp * self.meanX5_1
             P_Y = self.Kp * self.meanY5_1
             I_X = (self.KI) * ((self.meanX5_2 * ( 1 / float(self.FrameRate_text.text()) ) )) #self.ChangePosPStepX
             I_Y = (self.KI) * ((self.meanY5_2 * ( 1 / float(self.FrameRate_text.text()) ) )) #self.ChangePosPStepX
             D_X = self.KD * (self.meanX5_3 / ((1 / float(self.FrameRate_text.text()))))
             D_Y = self.KD * (self.meanY5_3 / ((1 / float(self.FrameRate_text.text()))))
-            
-
-
 
             if not (self.Motor_threadX.is_running or abs(int(round(P_X + I_X + D_X ))) <= 0):
 
                 self.control_lateX = self.control_lateX + 1
-                if self.meanX5_1 > 0.000001 :
+                if self.meanX5_1 > 0.000001:
                     self.control_lateX = 0
 
-                  
-                    self.go_left_steps(abs(int(round(P_X + I_X + D_X ))))
-                    self.X_res[self.CurrentFrame] = -abs(int(round(P_X + I_X + D_X ))) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
-                elif (self.meanX5_1 < -0.000001):
-              
-                     
-                    self.go_right_steps(abs(int(round(P_X + I_X + D_X ))))
-                    self.X_res[self.CurrentFrame] = abs(int(round(P_X + I_X + D_X ))) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
+                    self.go_left_steps(abs(int(round(P_X + I_X + D_X))))
+                    self.X_res[self.CurrentFrame] = -abs(int(round(P_X + I_X + D_X))) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
 
-               
-                   
-         
-                
-                
-            if not (self.Motor_threadY.is_running or (abs(int(round(P_Y + I_Y + D_Y)))) <= 0) :
+                elif self.meanX5_1 < -0.000001:
+
+                    self.go_right_steps(abs(int(round(P_X + I_X + D_X))))
+                    self.X_res[self.CurrentFrame] = abs(int(round(P_X + I_X + D_X))) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
+
+            if not (self.Motor_threadY.is_running or (abs(int(round(P_Y + I_Y + D_Y)))) <= 0):
 
                 self.control_lateY = self.control_lateY + 1
-                if self.meanY5_1  > 0.000001 :
+                if self.meanY5_1 > 0.000001:
 
                     self.go_up_steps(abs(int(round(P_Y + I_Y + D_Y))))
                     self.Y_res[self.CurrentFrame] = -abs(int(P_Y + I_Y + D_Y)) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
-                elif self.meanY5_1  < -0.00001 :
+                elif self.meanY5_1 < -0.00001:
 
                     self.go_down_steps(abs(int(round(P_Y + I_Y + D_Y))))
                     self.Y_res[self.CurrentFrame] = abs(int(P_Y + I_Y + D_Y)) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
@@ -608,14 +597,14 @@ class PyBeamProfilerGUI(QMainWindow):
 
     def go_up(self):
         if not self.Motor_threadY.is_running:
-           self.Motor_threadY.steps = 1
+           self.Motor_threadY.steps = 10
            self.Motor_threadY.direction = self.up_DIR
 
            self.Motor_threadY.start()
     
     def go_down(self):
         if not self.Motor_threadY.is_running:
-           self.Motor_threadY.steps = 1
+           self.Motor_threadY.steps = 10
            self.Motor_threadY.direction = self.down_DIR
 
            self.Motor_threadY.start()
@@ -625,14 +614,14 @@ class PyBeamProfilerGUI(QMainWindow):
            self.Motor_threadX = Thread_motorX(parent=None)
            
            self.Motor_threadX.board = self.ard_board
-           self.Motor_threadX.steps = 1
+           self.Motor_threadX.steps = 10
            self.Motor_threadX.direction = self.left_DIR
 
            self.Motor_threadX.start()
 
     def go_right(self):
         if not self.Motor_threadX.is_running:
-           self.Motor_threadX.steps = 1
+           self.Motor_threadX.steps = 10
            self.Motor_threadX.direction = self.right_DIR
 
            self.Motor_threadX.start()
@@ -777,12 +766,12 @@ class PyBeamProfilerGUI(QMainWindow):
                     else:
                         self.up_DIR = 1
                         self.down_DIR = 0
-
-                    self.beamPath = math.sqrt(abs(self.meanY5_2 - self.meanY5_1)**2 + abs(self.meanX5_2 - self.meanX5_1)**2) 
+                    angle_move = int(int(self.ui_Arduino.StepsPerRev.text()) / 30) * self.thorlabs_AnglePerRev / int(self.ui_Arduino.StepsPerRev.text())
+                    self.beamPath = (abs(self.meanY5_2 - self.meanY5_1) + abs(self.meanX5_2 - self.meanX5_1)) / 2
                     
                     self.ChangePosPStepY = abs(self.meanY5_2 - self.meanY5_1) / int(int(self.ui_Arduino.StepsPerRev.text()) / 20)
                     self.ChangePosPStepX = abs(self.meanX5_2 - self.meanX5_1) / int(int(self.ui_Arduino.StepsPerRev.text()) / 20)
-                    self.beamPath = self.beamPath / math.sin(40 * self.thorlabs_AnglePerRev / int(self.ui_Arduino.StepsPerRev.text()))
+                    self.beamPath = (self.beamPath / 2) / math.sin(angle_move / 2)
 
                     self.ui_Arduino.Beam_path_length.setText(str(self.beamPath))
                     self.Caliberate_cond = False
@@ -793,9 +782,9 @@ class PyBeamProfilerGUI(QMainWindow):
                     self.down_DIR = 0
                     self.left_DIR = 0
                     self.right_DIR = 1
-                    self.go_up_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 20))
+                    self.go_up_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 30))
                     time.sleep(0.021)
-                    self.go_right_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 20))
+                    self.go_right_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 30))
                     self.Caliberate_cond = True
                 
                 
@@ -1002,44 +991,45 @@ class PyBeamProfilerGUI(QMainWindow):
         self.X_Max_Pos_offline = np.zeros(self.Nr_allfiles)  # array to follow the X-position of the beam center
         self.Y_Max_Pos_offline = np.zeros(self.Nr_allfiles)  # array to follow the Y-position of the beam center
         self.Circ_offline = np.zeros(self.Nr_allfiles)
+        if self.Nr_allfiles > 0:
+            for i in range (self.Nr_allfiles):
 
-        for i in range (self.Nr_allfiles):
+                im = skimage.io.imread(self.allfiles[i])
+                im = (im - np.min(im)) / (np.max(im) - np.min(im))  # normalize the matrix
+                upper_limit = 0.505
+                lower_limit = 0.495
+                cond = True  # makes sure the elipse is detected
+                while cond:
+                    yx_coords = np.column_stack(np.where((im >= lower_limit) & (im <= upper_limit)))
+                    if np.max(np.shape(yx_coords)) > 2:
+                        upper_limit = 0.505
+                        lower_limit = 0.495
+                        cond = False
+                    else:
+                        upper_limit = upper_limit + 0.005
+                        lower_limit = lower_limit - 0.005
+                    if (upper_limit > 1) or (lower_limit < 0):
+                        print(f'Frame number {i} was skipped')
+                        i = i+1
+                        im = skimage.io.imread(self.allfiles[i])
+                        upper_limit = 0.505
+                        lower_limit = 0.495
+                    if i >= self.Nr_allfiles - 1:
+                        break
 
-            im = skimage.io.imread(self.allfiles[i])
-            im = (im - np.min(im)) / (np.max(im) - np.min(im))  # normalize the matrix
-            upper_limit = 0.505
-            lower_limit = 0.495
-            cond = True  # makes sure the elipse is detected
-            while cond:
-                yx_coords = np.column_stack(np.where((im >= lower_limit) & (im <= upper_limit)))
-                if np.max(np.shape(yx_coords)) > 2:
-                    upper_limit = 0.505
-                    lower_limit = 0.495
-                    cond = False
-                else:
-                    upper_limit = upper_limit + 0.005
-                    lower_limit = lower_limit - 0.005
-                if (upper_limit > 1) or (lower_limit < 0):
-                    print(f'Frame number {i} was skipped')
-                    i = i+1
-                    im = skimage.io.imread(self.allfiles[i])
-                    upper_limit = 0.505
-                    lower_limit = 0.495
-                if i >= self.Nr_allfiles - 1:
-                    break
+                Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
+                X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
+                d_from_center = (yx_coords[:, 1] - X_Center) ** 2 + (yx_coords[:, 0] - Y_Center) ** 2
+                self.X_Max_Pos_offline[i] = X_Center * float(self.pixel_size.text())
+                self.Y_Max_Pos_offline[i] = Y_Center * float(self.pixel_size.text())
+                self.Circ_offline[i] = math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))
+            self.ui_offline.FrameSlider.valueChanged.connect(self.ChangViewedFrame)
+            self.ui_offline.X_Pos_Plot_offline.clicked.connect(self.PlotXchange_offline)
+            self.ui_offline.Y_Pos_Plot_offline.clicked.connect(self.PlotYchange_offline)
 
-            Y_Center = ((np.amax(yx_coords[:, 0]) + np.amin(yx_coords[:, 0])) / 2)
-            X_Center = ((np.amax(yx_coords[:, 1]) + np.amin(yx_coords[:, 1])) / 2)
-            d_from_center = (yx_coords[:, 1] - X_Center) ** 2 + (yx_coords[:, 0] - Y_Center) ** 2
-            self.X_Max_Pos_offline[i] = X_Center * float(self.pixel_size.text())
-            self.Y_Max_Pos_offline[i] = Y_Center * float(self.pixel_size.text())
-            self.Circ_offline[i] = math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))
-        self.ui_offline.FrameSlider.valueChanged.connect(self.ChangViewedFrame)
-        self.ui_offline.X_Pos_Plot_offline.clicked.connect(self.PlotXchange_offline)
-        self.ui_offline.Y_Pos_Plot_offline.clicked.connect(self.PlotYchange_offline)
-
-        self.window2.show()
-
+            self.window2.show()
+        else:
+            self.printed_info.setText(" No files have been selected")
     def ChangViewedFrame(self, value):
 
         im = self.gray2qimage(skimage.io.imread(self.allfiles[value]))
@@ -1171,7 +1161,7 @@ class PyBeamProfilerGUI(QMainWindow):
         popt2, pcov2 = sp.optimize.curve_fit(self.gauss, x_col, sum_col)
 
         self.CurrentFrame = i - self.SavedFileNumber * int(self.FramesPerFile_text.text())
-        self.ui.circularity_text.setText(str( math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))))
+        self.ui.circularity_text.setText(str(math.sqrt(np.min(d_from_center)) / math.sqrt(np.max(d_from_center))))
         self.ui.std_LA_text.setText(str(abs(popt2[2])))
         self.ui.std_SA_text.setText(str(abs(popt1[2])))
         #self.FWHM[self.CurrentFrame] = 2 * math.sqrt(np.max(d_from_center)) * float(self.pixel_size.text())
