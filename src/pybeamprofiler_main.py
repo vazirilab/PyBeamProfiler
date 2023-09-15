@@ -434,6 +434,55 @@ class PyBeamProfilerGUI(QMainWindow):
         self.CurrentFrame = 0
         self.IntegralStart = 0
 
+    def Error_check(self):
+        try:
+            float(self.FrameRate_text.text())
+        except:
+            self.FrameRate_text.setText('50')
+        try:
+            float(self.ExpTime_text.text())
+        except:
+            self.ExpTime_text.setText('12000')
+        try:
+            float(self.pixel_size.text())
+        except:
+            self.pixel_size.setText('0.0069')
+        try:
+            float(self.nr_of_frames.text())
+        except:
+            self.nr_of_frames.setText('100000')
+        try:
+            float(self.cam_serial.text())
+        except:
+            self.cam_serial.setText('20270803')
+        try:
+            float(self.ui_Arduino.StepsPerRev.text())
+        except:
+            self.ui_Arduino.StepsPerRev.setText('12800')
+        try:
+            float(self.ui_tunning.KD.text())
+        except:
+            self.ui_tunning.KD.setText('0.05')
+        try:
+            float(self.ui_tunning.KI.text())
+        except:
+            self.ui_tunning.KI.setText('0')
+        try:
+            float(self.ui_tunning.Kp.text())
+        except:
+            self.ui_tunning.Kp.setText('180')
+        try:
+            float(self.ui_tunning.Y_POS_CL.text())
+        except:
+            self.ui_tunning.Y_POS_CL.setText('1')
+        try:
+            float(self.ui_tunning.X_POS_CL.text())
+        except:
+            self.ui_tunning.X_POS_CL.setText('1')
+
+
+
+
     def closed_loop_start(self):
         self.IntegralStart = self.CurrentFrame
         if self.ui_Arduino.closed_loop_option.isChecked():
@@ -442,11 +491,12 @@ class PyBeamProfilerGUI(QMainWindow):
             self.ui_Arduino.calibrate_motors.setEnabled(True)
 
     def Change_PID(self):
+        self.Error_check()
         self.Kp = float(self.ui_tunning.Kp.text())
         self.KI = float(self.ui_tunning.KI.text())
         self.KD = float(self.ui_tunning.KD.text())
-        self.X_CL = float(self.ui_tunning.X_POS_CL.text())
-        self.Y_CL = float(self.ui_tunning.Y_POS_CL.text())
+        self.X_CL = abs(float(self.ui_tunning.X_POS_CL.text()))
+        self.Y_CL = abs(float(self.ui_tunning.Y_POS_CL.text()))
 
     def Open_tunning(self):
         self.window_tunning.show()
@@ -545,7 +595,7 @@ class PyBeamProfilerGUI(QMainWindow):
                            delimiter=",")
 
     def StartAcquisition_ard(self):
-        
+        self.Error_check()
         self.CurrentFrame = 0
         self.SavedFileNumber = 0
         self.printed_info.setText('   Acquisition starting... Please press Open Viewer to see the camera video stream.')
@@ -694,6 +744,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
 
     def Caliberate_Motors(self):
+        self.Error_check()
         if len(self.ui_Arduino.ENA_Pin_Y.text()) < 1:
             self.printed_info.setText('add a valid ENA Pin')
         elif len(self.ui_Arduino.ENA_Pin_X.text()) < 1:
@@ -1265,7 +1316,7 @@ class PyBeamProfilerGUI(QMainWindow):
                            delimiter=",")
 
     def StartAcquisition(self):
-        
+        self.Error_check()
         self.CurrentFrame = 0
         self.SavedFileNumber = 0
         self.Plot_Gauss = pg.PlotWidget()  # adding a plot to show the gaussian dist. of the long axis
