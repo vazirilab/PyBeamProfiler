@@ -22,6 +22,7 @@ import pyqtgraph as pg
 import pyfirmata
 import serial
 import serial.tools.list_ports
+import warnings
 
 # A thread for the camera. It emits frames and the number of the current frame
 class Thread_FLIR(QtCore.QThread):
@@ -73,14 +74,14 @@ class Thread_FLIR(QtCore.QThread):
                 # setting Auto exposure time mode
                 if self.Auto_ExpTimeCond and np.max(FrameNP) > 240:
 
-                    self.ExpTime_us = self.ExpTime_us - 100
+                    self.ExpTime_us = self.ExpTime_us - 50
                     self.cam.ExposureTime.SetValue(self.ExpTime_us)
                     image_result = self.cam.GetNextImage(10000)  # capturing a frame
                     FrameNP = image_result.GetNDArray()  # get the result as a numpy array
                     time.sleep(0.01)
 
 
-                elif np.max(FrameNP) < 120 and self.Auto_ExpTimeCond:
+                elif np.max(FrameNP) < 220 and self.Auto_ExpTimeCond:
 
                     self.ExpTime_us = self.ExpTime_us + 50
                     self.cam.ExposureTime.SetValue(self.ExpTime_us)
@@ -118,7 +119,7 @@ class Thread_FLIR(QtCore.QThread):
 
 
 class Thread_Data(QtCore.QThread):
-    changePixmap_Data = QtCore.pyqtSignal(np.ndarray, int)# a signal to renew each frame
+    changePixmap_Data = QtCore.pyqtSignal(np.ndarray, int, float)# a signal to renew each frame
     # those values are initial numbers that will be redefined in the GUI
     NUM_IMG = 100000
     serial = '20270803'  # seriel of the flir cam
@@ -135,10 +136,11 @@ class Thread_Data(QtCore.QThread):
         file_Nr = len(self.file_names)
         for i in range(file_Nr):
             FrameNP = skimage.io.imread(self.file_names[i])  # get the result as a numpy array
+            t = time.time()
             if self.Stop_Loop:
                 break
             time.sleep(1 / self.frame_rate)
-            self.changePixmap_Data.emit(FrameNP, i)  # send the frame and the current frame number to the GUI
+            self.changePixmap_Data.emit(FrameNP, i, t)  # send the frame and the current frame number to the GUI
         self.is_running = False
 
 
@@ -1133,6 +1135,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window1.show()
 
     @QtCore.pyqtSlot(np.ndarray, int, int)
+    @QtCore.pyqtSlot(np.ndarray, int, float)
     def ShowFrame(self, FrameNP, i, TimeStamp):
         FramePIL = PIL.Image.fromarray(FrameNP)  # get the result as a PIL image
 
@@ -1203,6 +1206,7 @@ class PyBeamProfilerGUI(QMainWindow):
 
 
         # curve fitting
+        warnings.filterwarnings("ignore")
         popt1, pcov1 = sp.optimize.curve_fit(self.gauss, x_rows, sum_rows)
 
         popt2, pcov2 = sp.optimize.curve_fit(self.gauss, x_col, sum_col)
