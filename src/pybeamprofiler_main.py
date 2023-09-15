@@ -399,6 +399,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.control_lateX = 0
 
         # Variables
+        self.min_FWHM = 30 # min detectable FWHM in pixels
         self.X_Max_Pos = None  # array to follow the X-position of the beam center
         self.Y_Max_Pos = None  # array to follow the Y-position of the beam center
         self.pos2 = None
@@ -1185,7 +1186,7 @@ class PyBeamProfilerGUI(QMainWindow):
                 self.FWHM[self.CurrentFrame] = abs(
                     x_col[sum_col_05[0][0]] - x_col[sum_col_05[0][np.max(np.shape(sum_col_05)) - 1]])
 
-                if self.FWHM[self.CurrentFrame] <= 5 * float(self.pixel_size.text()):
+                if self.FWHM[self.CurrentFrame] <= self.min_FWHM * float(self.pixel_size.text()):
                     upper_limit = upper_limit + 0.005
                     lower_limit = lower_limit - 0.005
                 else:
