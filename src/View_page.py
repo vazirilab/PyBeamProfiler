@@ -69,7 +69,7 @@ class Ui_MainWindow(object):
         self.cam_view = QtWidgets.QLabel(self.centralwidget)
         self.cam_view.setGeometry(QtCore.QRect(290, 60, 721, 521))
         self.cam_view.setText("")
-        self.cam_view.setScaledContents(False)
+        self.cam_view.setScaledContents(True)
         self.cam_view.setAlignment(QtCore.Qt.AlignCenter)
         self.cam_view.setObjectName("cam_view")
         self.X_Pos_Plot = QtWidgets.QPushButton(self.centralwidget)
@@ -114,13 +114,3 @@ class Ui_MainWindow(object):
         self.Std_LA_Plot.setText(_translate("MainWindow", "Plot Std for Long Axis"))
         self.label.setText(_translate("MainWindow", "mm"))
         self.label_2.setText(_translate("MainWindow", "mm"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())

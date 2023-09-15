@@ -54,7 +54,7 @@ class Ui_Ofline_Viewer(object):
         self.Frame_view = QtWidgets.QLabel(self.centralwidget)
         self.Frame_view.setGeometry(QtCore.QRect(330, 60, 721, 521))
         self.Frame_view.setText("")
-        self.Frame_view.setScaledContents(False)
+        self.Frame_view.setScaledContents(True)
         self.Frame_view.setAlignment(QtCore.Qt.AlignCenter)
         self.Frame_view.setObjectName("Frame_view")
         self.lineEdit_2 = QtWidgets.QLineEdit(self.centralwidget)
@@ -99,13 +99,3 @@ class Ui_Ofline_Viewer(object):
         self.lineEdit_2.setText(_translate("Ofline_Viewer", "Frame View"))
         self.label.setText(_translate("Ofline_Viewer", "mm"))
         self.label_2.setText(_translate("Ofline_Viewer", "mm"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    Ofline_Viewer = QtWidgets.QMainWindow()
-    ui = Ui_Ofline_Viewer()
-    ui.setupUi(Ofline_Viewer)
-    Ofline_Viewer.show()
-    sys.exit(app.exec_())

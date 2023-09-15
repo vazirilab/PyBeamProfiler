@@ -311,6 +311,7 @@ class PyBeamProfilerGUI(QMainWindow):
         self.StreamType_info.clicked.connect(self.stream_type_info)
         self.stop_acquisition.clicked.connect(self.StopAcquisition)
         self.actionOpen.triggered.connect(self.OpenFile)
+        self.actionSave.triggered.connect(self.SaveFile)
         self.actionAnalysis_Methode.triggered.connect(self.PrintAnalysisInfo)
         self.actionAbout.triggered.connect(self.PrintAboutInfo)
         self.ButtonPosition_control.clicked.connect(self.Open_Ard_Window)
@@ -351,9 +352,13 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_tunning.Kp.setText('180')
         self.ui_tunning.KI.setText('0.0')
         self.ui_tunning.KD.setText('0.05')
+        self.ui_tunning.X_POS_CL.setText('1.0')
+        self.ui_tunning.Y_POS_CL.setText('1.0')
         self.Kp = 180
         self.KI = 0.0
         self.KD = 0.05
+        self.X_CL = 1.0
+        self.Y_CL = 1.0
 
 
 
@@ -440,10 +445,11 @@ class PyBeamProfilerGUI(QMainWindow):
         self.Kp = float(self.ui_tunning.Kp.text())
         self.KI = float(self.ui_tunning.KI.text())
         self.KD = float(self.ui_tunning.KD.text())
+        self.X_CL = float(self.ui_tunning.X_POS_CL.text())
+        self.Y_CL = float(self.ui_tunning.Y_POS_CL.text())
 
     def Open_tunning(self):
         self.window_tunning.show()
-            
 
     def Follow_Position(self, FrameNP, i, TimeStamp, X_Center, Y_Center):
         self.ui_Arduino.cam_view_arduino.setPixmap(QtGui.QPixmap(QtGui.QPixmap.fromImage(self.gray2qimage(FrameNP))))
@@ -455,25 +461,15 @@ class PyBeamProfilerGUI(QMainWindow):
         self.FrameTime1[self.CurrentFrame] = time.time()
         if self.IntegralStart > self.CurrentFrame:
             self.IntegralStart = self.CurrentFrame
-        
 
-       
-            
-
-       # self.newcentermethod = sp.ndimage.center_of_mass(FrameNP) # * float(self.pixel_size.text())
-        
-        #print(X_Center * float(self.pixel_size.text()), Y_Center* float(self.pixel_size.text()))
-       
-        if self.SavedFileNumber > 0:
-            self.ui_Arduino.closed_loop_option.setChecked(False)
         if self.ui_Arduino.closed_loop_option.isChecked():
-            self.meanY5_1 = np.mean(self.Y_Max_Pos[self.CurrentFrame] - 2)
-            self.meanX5_1 = np.mean(self.X_Max_Pos[self.CurrentFrame] - 2.5)
+            self.meanY5_1 = np.mean(self.Y_Max_Pos[self.CurrentFrame] - self.Y_CL)
+            self.meanX5_1 = np.mean(self.X_Max_Pos[self.CurrentFrame] - self.X_CL)
             if self.CurrentFrame > 0:
-               self.meanY5_2 = np.sum(self.Y_Max_Pos[self.IntegralStart: self.CurrentFrame] - 2)
-               self.meanX5_2 = np.sum(self.X_Max_Pos[self.IntegralStart: self.CurrentFrame] - 2.5)
+               self.meanY5_2 = np.sum(self.Y_Max_Pos[self.IntegralStart: self.CurrentFrame] - self.Y_CL)
+               self.meanX5_2 = np.sum(self.X_Max_Pos[self.IntegralStart: self.CurrentFrame] - self.X_CL)
                self.meanX5_3 = ((self.X_Max_Pos[self.CurrentFrame]) - (self.X_Max_Pos[self.CurrentFrame-1]))
-               self.meanY5_3 = ((self.Y_Max_Pos[self.CurrentFrame] - 2) - (self.Y_Max_Pos[self.CurrentFrame-1] - 2)) 
+               self.meanY5_3 = ((self.Y_Max_Pos[self.CurrentFrame] - self.Y_CL) - (self.Y_Max_Pos[self.CurrentFrame-1] - self.Y_CL))
             else:
                self.meanY5_2 = 0
                self.meanX5_2 = 0
@@ -487,19 +483,18 @@ class PyBeamProfilerGUI(QMainWindow):
             D_X = self.KD * (self.meanX5_3 / ((1 / float(self.FrameRate_text.text()))))
             D_Y = self.KD * (self.meanY5_3 / ((1 / float(self.FrameRate_text.text()))))
 
-            if not (self.Motor_threadX.is_running or abs(int(round(P_X + I_X + D_X ))) <= 0):
+            if not (self.Motor_threadX.is_running or abs(int(round(P_X + I_X + D_X))) <= 0):
 
-                self.control_lateX = self.control_lateX + 1
                 if self.meanX5_1 > 0.000001:
-                    self.control_lateX = 0
+
 
                     self.go_left_steps(abs(int(round(P_X + I_X + D_X))))
-                    self.X_res[self.CurrentFrame] = -abs(int(round(P_X + I_X + D_X))) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
-
+                    self.X_res[self.CurrentFrame] = -abs(int(round(P_X + I_X + D_X)))
+                    #* (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
                 elif self.meanX5_1 < -0.000001:
 
                     self.go_right_steps(abs(int(round(P_X + I_X + D_X))))
-                    self.X_res[self.CurrentFrame] = abs(int(round(P_X + I_X + D_X))) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
+                    self.X_res[self.CurrentFrame] = abs(int(round(P_X + I_X + D_X)))
 
             if not (self.Motor_threadY.is_running or (abs(int(round(P_Y + I_Y + D_Y)))) <= 0):
 
@@ -507,11 +502,11 @@ class PyBeamProfilerGUI(QMainWindow):
                 if self.meanY5_1 > 0.000001:
 
                     self.go_up_steps(abs(int(round(P_Y + I_Y + D_Y))))
-                    self.Y_res[self.CurrentFrame] = -abs(int(P_Y + I_Y + D_Y)) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
+                    self.Y_res[self.CurrentFrame] = -abs(int(P_Y + I_Y + D_Y))
                 elif self.meanY5_1 < -0.00001:
 
                     self.go_down_steps(abs(int(round(P_Y + I_Y + D_Y))))
-                    self.Y_res[self.CurrentFrame] = abs(int(P_Y + I_Y + D_Y)) * (self.thorlabs_AnglePerRev / float(self.ui_Arduino.StepsPerRev.text()))
+                    self.Y_res[self.CurrentFrame] = abs(int(P_Y + I_Y + D_Y))
                
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
@@ -834,7 +829,6 @@ class PyBeamProfilerGUI(QMainWindow):
         else:
             self.printed_info.setText("No Arduinos detected.")
 
-
     def find_arduino_ports(self):
         arduino_ports = [
             (p.device, p.description)
@@ -857,7 +851,6 @@ class PyBeamProfilerGUI(QMainWindow):
             self.ui.std_SA_text.setEnabled(True)
             self.ui.circularity_text.setEnabled(True)
 
-
     def Auto_ExpTime(self):
         if self.AutoExpTime.isChecked():
             if self.CurrentFrame > 0:
@@ -867,7 +860,6 @@ class PyBeamProfilerGUI(QMainWindow):
             if self.CurrentFrame > 0:
                 self.th.Auto_ExpTimeCond = False
             self.ExpTime_text.setEnabled(True)
-
 
     def StopAcquisition(self):
         self.th.Stop_Loop = True
@@ -982,6 +974,9 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_y_offline.setCentralWidget(self.Y_Plot_offline)
         self.window_plot_y_offline.show()
 
+    def SaveFile(self):
+        if not self.SavingOption.isChecked():
+            self.SavingOption.setChecked(True)
 
     def OpenFile(self):
         self.allfiles = QFileDialog.getOpenFileNames(self, 'Open file', 'D:')
