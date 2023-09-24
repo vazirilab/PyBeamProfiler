@@ -210,7 +210,7 @@
      <rect>
       <x>10</x>
       <y>200</y>
-      <width>241</width>
+      <width>171</width>
       <height>41</height>
      </rect>
     </property>
@@ -223,7 +223,7 @@
      <rect>
       <x>10</x>
       <y>250</y>
-      <width>241</width>
+      <width>171</width>
       <height>41</height>
      </rect>
     </property>
@@ -236,7 +236,7 @@
      <rect>
       <x>10</x>
       <y>300</y>
-      <width>241</width>
+      <width>171</width>
       <height>41</height>
      </rect>
     </property>
@@ -249,7 +249,7 @@
      <rect>
       <x>10</x>
       <y>350</y>
-      <width>241</width>
+      <width>171</width>
       <height>41</height>
      </rect>
     </property>
@@ -281,6 +281,58 @@
     </property>
     <property name="text">
      <string>mm</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="live_view_x">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>210</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Live View</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="live_view_y">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>260</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Live View</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="live_view_fwhm">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>310</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Live View</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="live_view_std">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>360</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Live View</string>
     </property>
    </widget>
   </widget>

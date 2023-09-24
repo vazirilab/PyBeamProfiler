@@ -345,6 +345,11 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.Y_Pos_Plot.clicked.connect(self.PlotYchange)
         self.ui.FWHM_Plot.clicked.connect(self.PlotFWHMchange)
         self.ui.Std_LA_Plot.clicked.connect(self.PlotStdchange)
+        self.ui.live_view_x.stateChanged.connect(self.Plot_X_live)
+        self.ui.live_view_y.stateChanged.connect(self.Plot_Y_live)
+        self.ui.live_view_fwhm.stateChanged.connect(self.Plot_FWHM_live)
+        self.ui.live_view_std.stateChanged.connect(self.Plot_STD_live)
+
 
         # Tunning Window
         self.ui_tunning = Ui_Tunning_parameters()
@@ -401,6 +406,8 @@ class PyBeamProfilerGUI(QMainWindow):
         self.control_lateX = 0
 
         # Variables
+        self.liveY = False
+        self.liveX = False
         self.min_FWHM = 30 # min detectable FWHM in pixels
         self.X_Max_Pos = None  # array to follow the X-position of the beam center
         self.Y_Max_Pos = None  # array to follow the Y-position of the beam center
@@ -563,6 +570,11 @@ class PyBeamProfilerGUI(QMainWindow):
                
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
+        if self.liveX and self.CurrentFrame > 0:
+            self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame], clear=True)
+        if self.liveY and self.CurrentFrame > 0:
+            self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame], clear=True)
+
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
                                               (self.CurrentFrame == self.FileStreamNr - 1) or
                                               (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) or
@@ -975,6 +987,12 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_Std.setCentralWidget(self.StdPlot)
         self.window_plot_Std.show()
 
+    def Plot_STD_live(self):
+        pass
+
+    def Plot_FWHM_live(self):
+        pass
+
     def PlotFWHMchange(self):
         self.FWHMPlot = pg.PlotWidget()
         self.FWHMPlot.setTitle("FWHM Value")
@@ -995,7 +1013,22 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_y = QMainWindow()
         self.window_plot_y.setCentralWidget(self.Y_Plot)
         self.window_plot_y.show()
-       
+
+    def Plot_Y_live(self):
+        if self.ui.live_view_y.isChecked():
+            self.ui.Y_Pos_Plot.setEnabled(False)
+            self.Y_Plot = pg.PlotWidget()
+            self.Y_Plot.setTitle("Centroid Y-Position")
+            self.Y_Plot.setLabel(axis='left', text='Position/mm')
+            self.Y_Plot.setLabel(axis='bottom', text='Frame/a.u.')
+            self.window_plot_y = QMainWindow()
+            self.window_plot_y.setCentralWidget(self.Y_Plot)
+            self.window_plot_y.show()
+            self.liveY = True
+        else:
+            self.liveY = False
+            self.ui.Y_Pos_Plot.setEnabled(True)
+
 
     def PlotXchange(self):
         self.X_Plot = pg.PlotWidget()
@@ -1006,6 +1039,22 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_x = QMainWindow()
         self.window_plot_x.setCentralWidget(self.X_Plot)
         self.window_plot_x.show()
+    def Plot_X_live(self):
+        if self.ui.live_view_x.isChecked():
+            self.ui.X_Pos_Plot.setEnabled(False)
+            self.X_Plot = pg.PlotWidget()
+            self.X_Plot.setTitle("Centroid X-Position")
+            self.X_Plot.setLabel(axis='left', text='Position/mm')
+            self.X_Plot.setLabel(axis='bottom', text='Frame/a.u.')
+            self.window_plot_x = QMainWindow()
+            self.window_plot_x.setCentralWidget(self.X_Plot)
+            self.window_plot_x.show()
+            self.liveX = True
+        else:
+            self.liveX = False
+            self.ui.X_Pos_Plot.setEnabled(True)
+
+
 
     def PlotXchange_offline(self):
         self.X_Plot_offline = pg.PlotWidget()
@@ -1224,6 +1273,10 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
         self.Plot_Gauss.plot(x_col, sum_col, clear=True)
+        if self.liveX and self.CurrentFrame > 0:
+            self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame], clear=True)
+        if self.liveY and self.CurrentFrame > 0:
+            self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame], clear=True)
 
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
                                                (self.CurrentFrame == self.FileStreamNr-1) or
@@ -1286,6 +1339,11 @@ class PyBeamProfilerGUI(QMainWindow):
         self.FrameTime[self.CurrentFrame] = TimeStamp
         self.ui.x_position_text.setText(str(self.X_Max_Pos[self.CurrentFrame]))
         self.ui.y_position_text.setText(str(self.Y_Max_Pos[self.CurrentFrame]))
+        if self.liveX and self.CurrentFrame > 0:
+            self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame], clear=True)
+        if self.liveY and self.CurrentFrame > 0:
+            self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame], clear=True)
+
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
                                               (self.CurrentFrame == self.FileStreamNr - 1) or
                                               (self.CurrentFrame == int(self.FramesPerFile_text.text()) - 1) or
