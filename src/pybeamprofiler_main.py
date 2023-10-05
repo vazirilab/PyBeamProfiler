@@ -24,10 +24,11 @@ import serial
 import serial.tools.list_ports
 import warnings
 
-# A thread for the camera. It emits frames and the number of the current frame
+# A thread for the camera. It emits frames, the number of the current frame and the time stamp
 class Thread_FLIR(QtCore.QThread):
     changePixmap_FLIR = QtCore.pyqtSignal(np.ndarray, int, int) # a signal to renew each frame
     # those values are initial numbers that will be redefined in the GUI
+    # initial values
     NUM_IMG = 100000
     serial = '20270803'  # seriel of the flir cam
     ppmm = 0.0069  # pixels per mm to convert position to mm
@@ -118,6 +119,7 @@ class Thread_FLIR(QtCore.QThread):
         self.is_running = False
 
 
+# A thread that reads and emits images of a laser beam to imitate an accusation process
 class Thread_Data(QtCore.QThread):
     changePixmap_Data = QtCore.pyqtSignal(np.ndarray, int, float)# a signal to renew each frame
     # those values are initial numbers that will be redefined in the GUI
@@ -143,7 +145,7 @@ class Thread_Data(QtCore.QThread):
             self.changePixmap_Data.emit(FrameNP, i, t)  # send the frame and the current frame number to the GUI
         self.is_running = False
 
-
+# Threads to send signals to an Arduino to stabilize the position of the beam
 class Thread_motorX(QtCore.QThread):
     board=0
     direction=0
@@ -165,9 +167,6 @@ class Thread_motorX(QtCore.QThread):
         except:
             pass
 
-        
-
-        
         self.is_running = False
 
 
@@ -193,11 +192,12 @@ class Thread_motorY(QtCore.QThread):
             
         except:
             pass
-        
 
-        
         self.is_running = False
 
+
+# Thread to read frames from a FLIR camera and get the center of mass (The position of the laser). the signal is then
+# sent to the control loop to correct for the position
 class Thread_FLIR_Ard(QtCore.QThread):
     changePixmap_FLIR = QtCore.pyqtSignal(np.ndarray, int, int, float, float) # a signal to renew each frame
     # those values are initial numbers that will be redefined in the GUI
@@ -406,8 +406,10 @@ class PyBeamProfilerGUI(QMainWindow):
         self.control_lateX = 0
 
         # Variables
-        self.liveY = False
-        self.liveX = False
+        self.liveY = False #condition to enable live plotting
+        self.liveX = False  #condition to enable live plotting
+        self.liveSTD = False  # condition to enable live plotting
+        self.liveFWHM = False  # condition to enable live plotting
         self.min_FWHM = 30 # min detectable FWHM in pixels
         self.X_Max_Pos = None  # array to follow the X-position of the beam center
         self.Y_Max_Pos = None  # array to follow the Y-position of the beam center
@@ -574,6 +576,10 @@ class PyBeamProfilerGUI(QMainWindow):
             self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame], clear=True)
         if self.liveY and self.CurrentFrame > 0:
             self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame], clear=True)
+        if self.liveFWHM and self.CurrentFrame > 0:
+            self.FWHM_Plot.plot(self.FWHM[0:self.CurrentFrame], clear=True)
+        if self.liveSTD and self.CurrentFrame > 0:
+            self.STD_Plot.plot(self.std2[0:self.CurrentFrame], clear=True)
 
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
                                               (self.CurrentFrame == self.FileStreamNr - 1) or
@@ -988,10 +994,34 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_plot_Std.show()
 
     def Plot_STD_live(self):
-        pass
+        if self.ui.live_view_std.isChecked():
+            self.ui.Std_LA_Plot.setEnabled(False)
+            self.STD_Plot = pg.PlotWidget()
+            self.STD_Plot.setTitle("STD")
+            self.STD_Plot.setLabel(axis='left', text='Value/a.u.')
+            self.STD_Plot.setLabel(axis='bottom', text='Frame/a.u.')
+            self.window_plot_std = QMainWindow()
+            self.window_plot_std.setCentralWidget(self.STD_Plot)
+            self.window_plot_std.show()
+            self.liveSTD = True
+        else:
+            self.liveSTD = False
+            self.ui.Std_LA_Plot.setEnabled(True)
 
     def Plot_FWHM_live(self):
-        pass
+        if self.ui.live_view_fwhm.isChecked():
+            self.ui.FWHM_Plot.setEnabled(False)
+            self.FWHM_Plot = pg.PlotWidget()
+            self.FWHM_Plot.setTitle("FWHM")
+            self.FWHM_Plot.setLabel(axis='left', text='Value/mm')
+            self.FWHM_Plot.setLabel(axis='bottom', text='Frame/a.u.')
+            self.window_plot_fwhm = QMainWindow()
+            self.window_plot_fwhm.setCentralWidget(self.FWHM_Plot)
+            self.window_plot_fwhm.show()
+            self.liveFWHM = True
+        else:
+            self.liveFWHM = False
+            self.ui.FWHM_Plot.setEnabled(True)
 
     def PlotFWHMchange(self):
         self.FWHMPlot = pg.PlotWidget()
@@ -1277,6 +1307,10 @@ class PyBeamProfilerGUI(QMainWindow):
             self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame], clear=True)
         if self.liveY and self.CurrentFrame > 0:
             self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame], clear=True)
+        if self.liveFWHM and self.CurrentFrame > 0:
+            self.FWHM_Plot.plot(self.FWHM[0:self.CurrentFrame], clear=True)
+        if self.liveSTD and self.CurrentFrame > 0:
+            self.STD_Plot.plot(self.std2[0:self.CurrentFrame], clear=True)
 
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
                                                (self.CurrentFrame == self.FileStreamNr-1) or
@@ -1343,6 +1377,10 @@ class PyBeamProfilerGUI(QMainWindow):
             self.X_Plot.plot(self.X_Max_Pos[0:self.CurrentFrame], clear=True)
         if self.liveY and self.CurrentFrame > 0:
             self.Y_Plot.plot(self.Y_Max_Pos[0:self.CurrentFrame], clear=True)
+        if self.liveFWHM and self.CurrentFrame > 0:
+            self.FWHM_Plot.plot(self.FWHM[0:self.CurrentFrame], clear=True)
+        if self.liveSTD and self.CurrentFrame > 0:
+            self.STD_Plot.plot(self.std2[0:self.CurrentFrame], clear=True)
 
         if self.SavingOption.isChecked() and ((self.CurrentFrame == int(self.nr_of_frames.text())) or
                                               (self.CurrentFrame == self.FileStreamNr - 1) or
