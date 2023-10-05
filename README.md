@@ -8,11 +8,11 @@ A laser beam profiler app for FLIR cameras.
 - The profile of the beam can be saved as well by enabling the corresponding checkbox
 - If the Saving option is selected while recording from "Position Control", the saved .csv file will contain: 
 - 1. the timestamp of an  acquired frame.
-- 1. The X-position of the center. 
-- 1. The Y-position of the center. 
-- 1. Loop response in X. 
-- 1. Loop response in Y. 
-- 1. Time of frame according to PC.
+- 2. The X-position of the center. 
+- 3. The Y-position of the center. 
+- 4. Loop response in X. 
+- 5. Loop response in Y. 
+- 6. Time of frame according to PC.
 - If the user wishes to apply the position stabilizing design offered refer to the hardware design folder. 
 
 ## Installation
