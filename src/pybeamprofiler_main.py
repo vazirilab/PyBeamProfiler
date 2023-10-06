@@ -356,12 +356,12 @@ class PyBeamProfilerGUI(QMainWindow):
         self.window_tunning = QMainWindow()
         self.ui_tunning.setupUi(self.window_tunning)
         self.ui_tunning.Apply_par.clicked.connect(self.Change_PID)
-        self.ui_tunning.Kp.setText('180')
+        self.ui_tunning.Kp.setText('80')
         self.ui_tunning.KI.setText('0.0')
         self.ui_tunning.KD.setText('0.05')
         self.ui_tunning.X_POS_CL.setText('1.0')
         self.ui_tunning.Y_POS_CL.setText('1.0')
-        self.Kp = 180
+        self.Kp = 80
         self.KI = 0.0
         self.KD = 0.05
         self.X_CL = 1.0

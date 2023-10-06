@@ -31,5 +31,7 @@ A laser beam profiler app for FLIR cameras to monitor laser beam and control pos
 - In case The user wants to add new featurs:
   1. Use [qt designer](https://doc.qt.io/qt-6/qtdesigner-manual.html) to change the Tabs files (.ui files) or add one.
   2. Change the .ui files to .py files by typing ` pyuic5 -x main.ui -o main.py` in the conda command window.
-  3. Add the function or the thread to the main code and connect it to the new element you added.
+  3. Add the function or the thread to the main code and connect it to the new element you added. If you designed a new app import the class in the .py you created.
+- The User can use the "Position Control" tap to control the laser with an arduino and a stepper motor. Design is in the "Hardware_design_control" folder, and the code for the arduino can be found in "src/Ard_control/Arduino_stepper_control".
+
 
