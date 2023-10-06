@@ -21,12 +21,12 @@ A laser beam profiler app for FLIR cameras to monitor laser beam and control pos
 - 5. The FWHM of the Gaussian distribution of the beam.
 - The profile of the beam can be saved as well by enabling the corresponding checkbox
 - If the Saving option is selected while recording from "Position Control", the saved .csv file will contain: 
-- 1. the timestamp of an  acquired frame.
-- 2. The X-position of the center. 
-- 3. The Y-position of the center. 
-- 4. Loop response in X. 
-- 5. Loop response in Y. 
-- 6. Time of frame according to PC.
+ 1. the timestamp of an  acquired frame.
+ 2. The X-position of the center. 
+ 3. The Y-position of the center. 
+ 4. Loop response in X. 
+ 5. Loop response in Y. 
+ 6. Time of frame according to PC.
 - If the user wishes to apply the position stabilizing design offered refer to the hardware design folder. 
 - In case The user wants to add new featurs:
 - 1. Use [qt designer](https://doc.qt.io/qt-6/qtdesigner-manual.html) to change the Tabs files (.ui files) or add one.
