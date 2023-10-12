@@ -1,4 +1,4 @@
-# pybeamprofiler
+# PyBeamProfiler
 A laser beam profiler app for FLIR cameras to monitor laser beam and control position using stepper motors. The GUI is very easy to use and manipulate and develop. 
 
 
