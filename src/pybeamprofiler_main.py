@@ -1132,6 +1132,7 @@ class PyBeamProfilerGUI(QMainWindow):
             self.window2.show()
         else:
             self.printed_info.setText(" No files have been selected")
+
     def ChangViewedFrame(self, value):
 
         im = self.gray2qimage(skimage.io.imread(self.allfiles[value]))
@@ -1140,9 +1141,6 @@ class PyBeamProfilerGUI(QMainWindow):
         self.ui_offline.circularity_text_offline.setText(str(self.Circ_offline[value]))
         self.ui_offline.x_position_text_offline.setText(str(self.X_Max_Pos_offline[value]))
         self.ui_offline.y_position_text_offline.setText(str(self.Y_Max_Pos_offline[value]))
-
-
-
 
     def cam_serial_info(self):
         self.printed_info.setText('     Please enter the serial of the FLIR camera you are using.')
