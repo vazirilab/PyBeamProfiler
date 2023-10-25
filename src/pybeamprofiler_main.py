@@ -853,17 +853,6 @@ class PyBeamProfilerGUI(QMainWindow):
                     time.sleep(0.021)
                     self.go_right_steps(int(int(self.ui_Arduino.StepsPerRev.text()) / 30))
                     self.Caliberate_cond = True
-                
-                
-
-
-                
-
-                
-                
-                
-                
-                
 
     def closeEvent(self, event):
         if not (type(self.ard_board) == int):
@@ -874,21 +863,6 @@ class PyBeamProfilerGUI(QMainWindow):
         PyQt5.QtWidgets.QApplication.closeAllWindows()
         event.accept()
 
-#    def keyPressEvent(self, event):
-#
- #       key = event.key()
-  #      if not (self.ard_board == 0):
-   #         if key == QtCore.Qt.Key_S:
-    #            self.rotate_one_step(self.down_DIR, self.ard_board, self.DIRY, self.PULY)
-
-     #       if key == QtCore.Qt.Key_W:
-      #          self.rotate_one_step(self.up_DIR, self.ard_board, self.DIRY, self.PULY)
-
-#            if key == QtCore.Qt.Key_D:
- #               self.rotate_one_step(self.right_DIR, self.ard_board, self.DIRX, self.PULX)
-#
- #           if key == QtCore.Qt.Key_A:
-  #              self.rotate_one_step(self.left_DIR, self.ard_board, self.DIRX, self.PULX)
 
     def Open_Ard_Window(self):
         # Find the Arduino port(s).
@@ -1281,8 +1255,6 @@ class PyBeamProfilerGUI(QMainWindow):
             if (upper_limit > 1) or (lower_limit < 0):
                 print('Make sure camera is open')
                 cond = False
-
-
 
         # curve fitting
         warnings.filterwarnings("ignore")

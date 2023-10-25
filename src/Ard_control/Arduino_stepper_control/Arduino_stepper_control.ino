@@ -1,5 +1,3 @@
-#include <AccelStepper.h>
-
 // In this skitch you can change the pin numbers for PUL and DIR to suit your Arduino.
 // Stepper 1 is for the x direction and 2 is for the y direction
 
